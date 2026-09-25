@@ -1,4 +1,4 @@
-// Globálne štýly aplikácie "Kanál!"
+// Globálne štýly aplikácie "Kanále"
 // Pravidlá dizajnu: žiadne tiene, okraje 1.5px, iba pastelové farby.
 
 :root {
@@ -52,19 +52,21 @@ h3 {
 
 /* ---------- spoločné prvky ---------- */
 .logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font: 26px var(--title);
   color: var(--ink);
   text-decoration: none;
 }
-.logo span {
-  display: inline-block;
-  margin-left: 4px;
-  padding: 0 7px;
-  background: var(--pink);
-  color: var(--yellow);
-  border: var(--border);
-  border-radius: 7px;
-  transform: rotate(4deg);
+.logo-icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+.logo-text {
+  line-height: 1;
 }
 .chip {
   display: inline-flex;
@@ -183,15 +185,35 @@ button.chip {
   border-radius: 12px;
   font-family: var(--title);
 }
+.side-search {
+  margin-inline: 4px;
+}
+.side-search .q-field__control {
+  min-height: 40px;
+}
+.side-search .q-field__prepend {
+  color: var(--muted);
+}
 .side-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   flex: 1; // priatelia + servery zaberú voľné miesto a scrollujú sa
   overflow: auto;
 }
+.side-empty {
+  margin: 4px 0 8px;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
 // hlavička rozbaľovacej sekcie (q-expansion-item header-class="side-title")
 .side-title {
-  padding: 4px 0;
+  min-height: 40px;
+  padding: 8px 10px;
   font: 13px var(--title);
   text-transform: uppercase;
+  border-radius: 8px;
 }
 .server {
   display: flex;
@@ -222,7 +244,8 @@ button.chip {
   display: block;
   color: var(--muted);
 }
-.friend.router-link-active {
+.friend.router-link-active,
+.friend.active {
   background: var(--sheet);
   border-color: var(--ink);
 }
@@ -231,37 +254,56 @@ button.chip {
   grid-template-columns: 40px 1fr;
   gap: 10px;
   align-items: center;
-  padding: 12px;
-  margin-bottom: 10px;
-  background: var(--pink-l);
-  border: var(--border);
-  border-radius: 14px;
+  padding: 8px 2px 2px;
+  margin-bottom: 2px;
 }
 .me-box small {
   display: block;
   color: var(--muted);
 }
-.status-switch {
-  grid-column: 1 / -1;
-  display: flex;
-  border: var(--border);
-  border-radius: 10px;
-  overflow: hidden;
+.profile-avatar-trigger {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
 }
-.status-switch button {
-  flex: 1;
-  padding: 4px 0;
-  font-size: 12px;
-  font-weight: 800;
+.profile-avatar-trigger:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.profile-status-menu {
+  min-width: 184px;
+  padding: 8px;
+  color: var(--ink);
   background: var(--sheet);
-  border: 0;
-  cursor: pointer;
 }
-.status-switch button + button {
-  border-left: var(--border);
+.profile-status-menu .q-item__label--header {
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
-.status-switch button.active {
-  background: var(--mint);
+.profile-status-option {
+  min-height: 36px;
+  padding: 5px 8px;
+  border-radius: 7px;
+}
+.profile-status-option.active {
+  background: var(--tint);
+  font-weight: 800;
+}
+.profile-status-option .q-item__section--avatar {
+  min-width: 22px;
+  padding-right: 6px;
+}
+.profile-status-option .status {
+  width: 9px;
+  height: 9px;
+}
+.profile-status-option:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
 /* ---------- hlavná časť + záložky ---------- */
@@ -336,6 +378,20 @@ button.chip {
   background: var(--yellow);
   transform: rotate(-2deg);
 }
+.thread-tab {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.new-thread.tab {
+  min-height: 0;
+  margin-bottom: -1.5px;
+  padding: 8px 12px;
+  background: var(--mint);
+  border-radius: 12px 12px 0 0;
+  font-weight: 800;
+}
 
 /* ---------- hárok s obsahom stránky ---------- */
 .sheet {
@@ -346,7 +402,7 @@ button.chip {
   overflow: hidden;
   background: var(--sheet);
   border: var(--border);
-  border-radius: 0 16px 16px 16px;
+  border-radius: 0 0 16px 16px;
 }
 .sheet-header {
   display: flex;
@@ -383,6 +439,225 @@ button.chip {
 .ticket p {
   margin: 0;
   font-weight: 700;
+}
+
+/* ---------- domovský prehľad ---------- */
+.home-sheet {
+  border-radius: 16px;
+}
+.home-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  padding: 22px;
+  overflow: auto;
+}
+.home-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px;
+  background: var(--lav);
+  border: var(--border);
+  border-radius: 16px;
+}
+.home-welcome-copy {
+  display: grid;
+  gap: 6px;
+}
+.home-welcome h1 {
+  font-size: 28px;
+}
+.home-welcome p,
+.home-invite-copy p {
+  margin: 0;
+  color: var(--ink);
+}
+.home-primary {
+  flex: none;
+}
+.home-invitations {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--yellow);
+  border: var(--border);
+  border-radius: 14px;
+}
+.home-invite-copy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.home-invite-copy h2 {
+  margin-bottom: 3px;
+  font: 700 15px/1.3 'Figtree', system-ui, sans-serif;
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.9fr);
+  align-items: start;
+  gap: 16px;
+}
+.home-section {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--tint);
+  border: var(--border);
+  border-radius: 14px;
+}
+.home-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: var(--border);
+}
+.home-section-heading h2 {
+  font: 18px/1.3 var(--title);
+}
+.home-section-heading.pink-heading {
+  background: var(--pink);
+  color: var(--ink);
+}
+.home-section-heading.mint-heading {
+  background: var(--mint);
+}
+.home-section-heading .chip {
+  background: var(--sheet);
+  color: var(--ink);
+}
+.home-server {
+  padding: 14px 16px;
+  border-bottom: 1.5px solid var(--ink);
+}
+.home-server:last-child {
+  border-bottom: 0;
+}
+.home-server-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.home-server-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 0;
+  color: var(--ink);
+  font: 17px var(--title);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.home-server-name:disabled {
+  cursor: default;
+}
+.home-server-name:focus-visible,
+.home-channel:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.home-server-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  background: var(--lav);
+  border: var(--border);
+  border-radius: 10px;
+}
+.home-channel-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.home-channel-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0 0 41px;
+}
+.home-channel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 9px;
+  color: var(--ink);
+  font: 700 13px 'Figtree', system-ui, sans-serif;
+  background: var(--sheet);
+  border: var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.home-channel:hover {
+  background: var(--yellow);
+}
+.home-friend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1.5px solid var(--ink);
+}
+.home-friend:last-child {
+  border-bottom: 0;
+}
+.home-friend:hover,
+.home-friend:focus-visible {
+  background: var(--sheet);
+}
+.home-friend:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+.home-friend-info {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.home-friend-info small {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-friend-status {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+.home-friend-status .status {
+  width: 10px;
+  height: 10px;
+}
+.home-friend-status small {
+  font-size: 10px;
+}
+.home-empty {
+  margin: 0;
+  padding: 12px 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.home-section-empty {
+  padding: 22px 16px;
 }
 
 /* ---------- správy ---------- */
@@ -592,6 +867,52 @@ button.chip {
   }
 }
 @media (max-width: 700px) {
+  .home-content {
+    gap: 12px;
+    padding: 14px;
+  }
+  .home-welcome {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+  }
+  .home-welcome h1 {
+    font-size: 23px;
+  }
+  .home-welcome p {
+    font-size: 14px;
+  }
+  .home-invitations {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px;
+  }
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .home-server {
+    padding: 12px;
+  }
+  .home-channel-list {
+    margin-left: 0;
+  }
+  .top-row {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+  .tabs {
+    flex: 1 1 100%;
+    width: 100%;
+    padding-top: 4px;
+  }
+  .top-actions {
+    margin-left: auto;
+  }
+  .top-actions .tab {
+    padding: 8px;
+  }
   .message {
     max-width: 90%;
   }

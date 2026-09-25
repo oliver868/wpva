@@ -2,6 +2,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import ChannelPage from '@/pages/ChannelPage.vue'
 import DirectPage from '@/pages/DirectPage.vue'
+import HomePage from '@/pages/HomePage.vue'
 import SettingsPage from '@/pages/SettingsPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
@@ -12,9 +13,10 @@ const routes = [
     path: '/',
     component: MainLayout,
     children: [
-      { path: '', redirect: '/c/general' },
+      { path: '', redirect: '/home' },
+      { path: 'home', name: 'home', component: HomePage },
       { path: 'c/:name', component: ChannelPage },
-      { path: 'dm/:nick', component: DirectPage },
+      { path: 'dm/:nick/:threadId?', component: DirectPage },
       { path: 'settings', component: SettingsPage }
     ]
   },

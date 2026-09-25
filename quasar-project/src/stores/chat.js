@@ -80,18 +80,36 @@ export const state = reactive({
   friends: [
     {
       nick: 'mara',
-      notify: 'all',
-      messages: [{ from: 'mara', text: 'Nezabudni na link na repo :)', time: '09:35' }]
+      threads: [
+        {
+          id: 'main',
+          title: 'Hlavný chat',
+          notify: 'all',
+          messages: [{ from: 'mara', text: 'Nezabudni na link na repo :)', time: '09:35' }]
+        }
+      ]
     },
     {
       nick: 'tomas',
-      notify: 'all',
-      messages: [{ from: 'tomas', text: 'Vďaka za pomoc s /invite!', time: 'Včera' }]
+      threads: [
+        {
+          id: 'main',
+          title: 'Hlavný chat',
+          notify: 'all',
+          messages: [{ from: 'tomas', text: 'Vďaka za pomoc s /invite!', time: 'Včera' }]
+        }
+      ]
     },
     {
       nick: 'lucia',
-      notify: 'all',
-      messages: [{ from: 'lucia', text: 'Uvidíme sa v utorok.', time: 'Po' }]
+      threads: [
+        {
+          id: 'main',
+          title: 'Hlavný chat',
+          notify: 'all',
+          messages: [{ from: 'lucia', text: 'Uvidíme sa v utorok.', time: 'Po' }]
+        }
+      ]
     }
   ],
 

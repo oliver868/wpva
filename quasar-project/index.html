@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="sk">
   <head>
-    <title><%= productName %></title>
+    <title>Kanále</title>
 
     <meta charset="utf-8" />
     <meta name="description" content="<%= productDescription %>" />
@@ -15,31 +15,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;<% if (ctx.dev) { %> connect-src 'self' ws://localhost:*; worker-src 'self' blob:;<% } %>"
     />
 
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="128x128"
-      href="icons/favicon-128x128.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="96x96"
-      href="icons/favicon-96x96.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="icons/favicon-32x32.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="icons/favicon-16x16.png"
-    />
-    <link rel="icon" type="image/ico" href="favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="icons/kanale.svg" />
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Figtree:wght@400;500;600;700;800&display=swap"
