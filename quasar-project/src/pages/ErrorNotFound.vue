@@ -1,21 +1,6 @@
 <template>
-  <div
-    class="fullscreen bg-blue text-white text-center q-pa-md flex flex-center"
-  >
-    <div>
-      <div style="font-size: 30vh"> 404 </div>
-
-      <div class="text-h2" style="opacity: 0.4"> Oops. Nothing here... </div>
-
-      <q-btn
-        class="q-mt-xl"
-        color="white"
-        text-color="blue"
-        unelevated
-        to="/"
-        label="Go Home"
-        no-caps
-      />
-    </div>
+  <div class="fullscreen empty">
+    <h2>404 · Tu nič nie je</h2>
+    <q-btn class="k-btn yellow" unelevated no-caps to="/" label="Späť do kanálov" />
   </div>
 </template>

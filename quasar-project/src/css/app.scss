@@ -1,1 +1,604 @@
-// app global css
+// Globálne štýly aplikácie "Kanál!"
+// Pravidlá dizajnu: žiadne tiene, okraje 1.5px, iba pastelové farby.
+
+:root {
+  --ink: #221e3a; // text a okraje
+  --muted: #6b5a8e; // menej dôležitý text
+  --bg: #f7cadd; // pozadie stránky
+  --side: #dcd5fc; // ľavý panel
+  --sheet: #fff0f7; // obsah (hárok)
+  --tint: #f3efff; // polia, správy
+  --lav: #c9c4f5;
+  --blue: #9db8ff;
+  --yellow: #ffd23f;
+  --pink: #ff5ca8;
+  --pink-l: #ffd6e8;
+  --mint: #bfefdf;
+  --green: #1db954;
+  --red: #ff3b3b;
+  --border: 1.5px solid var(--ink);
+  --title: 'Archivo Black', 'Arial Black', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Figtree', system-ui, sans-serif;
+  font-size: 15px;
+}
+.q-layout,
+.q-drawer {
+  background: var(--bg) !important;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--title);
+  margin: 0;
+  letter-spacing: 0;
+}
+h1 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+h2 {
+  font-size: 22px;
+  line-height: 1.2;
+}
+h3 {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* ---------- spoločné prvky ---------- */
+.logo {
+  font: 26px var(--title);
+  color: var(--ink);
+  text-decoration: none;
+}
+.logo span {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 7px;
+  background: var(--pink);
+  color: var(--yellow);
+  border: var(--border);
+  border-radius: 7px;
+  transform: rotate(4deg);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--tint);
+  border: var(--border);
+  border-radius: 99px;
+  cursor: default;
+}
+button.chip {
+  cursor: pointer;
+  background: var(--mint);
+}
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+// tlačidlá: <q-btn class="k-btn yellow" unelevated no-caps />
+.k-btn {
+  border: var(--border);
+  border-radius: 9px;
+  background: var(--lav);
+  font-weight: 800;
+}
+.k-btn.yellow {
+  background: var(--yellow);
+}
+.k-btn.mint {
+  background: var(--mint);
+}
+.k-btn.dark {
+  background: var(--ink);
+  color: var(--yellow);
+}
+.k-btn.danger {
+  background: var(--red);
+  color: var(--yellow);
+}
+.k-btn.big {
+  padding: 6px 0;
+  font-family: var(--title);
+}
+
+// textové polia: <q-input class="k-input" borderless dense />
+.k-input .q-field__control {
+  padding: 0 12px;
+  background: var(--tint);
+  border: var(--border);
+  border-radius: 10px;
+}
+.k-input.q-field--focused .q-field__control {
+  background: #fff1b8;
+}
+
+// avatar so stavom
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  font-size: 12px;
+  font-weight: 800;
+  border: var(--border);
+  border-radius: 50%;
+}
+.avatar.small {
+  width: 30px;
+  height: 30px;
+  font-size: 10px;
+}
+.status {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: var(--border);
+  border-radius: 50%;
+}
+.avatar .status {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+}
+.status.online {
+  background: var(--green);
+}
+.status.dnd {
+  background: var(--red);
+}
+.status.offline {
+  background: #b7a9d6;
+}
+
+/* ---------- ľavý panel ---------- */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100% - 32px);
+  margin: 16px;
+  padding: 16px;
+  background: var(--side);
+  border: var(--border);
+  border-radius: 16px;
+}
+.create {
+  background: var(--yellow);
+  border: var(--border);
+  border-radius: 12px;
+  font-family: var(--title);
+}
+.side-lists {
+  flex: 1; // priatelia + servery zaberú voľné miesto a scrollujú sa
+  overflow: auto;
+}
+// hlavička rozbaľovacej sekcie (q-expansion-item header-class="side-title")
+.side-title {
+  padding: 4px 0;
+  font: 13px var(--title);
+  text-transform: uppercase;
+}
+.server {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+}
+.server.active {
+  background: var(--sheet);
+  border-color: var(--ink);
+}
+.friend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px;
+  color: var(--ink);
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+}
+.friend small {
+  display: block;
+  color: var(--muted);
+}
+.friend.router-link-active {
+  background: var(--sheet);
+  border-color: var(--ink);
+}
+.me-box {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--pink-l);
+  border: var(--border);
+  border-radius: 14px;
+}
+.me-box small {
+  display: block;
+  color: var(--muted);
+}
+.status-switch {
+  grid-column: 1 / -1;
+  display: flex;
+  border: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.status-switch button {
+  flex: 1;
+  padding: 4px 0;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--sheet);
+  border: 0;
+  cursor: pointer;
+}
+.status-switch button + button {
+  border-left: var(--border);
+}
+.status-switch button.active {
+  background: var(--mint);
+}
+
+/* ---------- hlavná časť + záložky ---------- */
+.main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 16px 16px 16px 0;
+}
+.mobile-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+// riadok so záložkami kanálov a tlačidlami vpravo
+.top-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.top-actions {
+  display: flex;
+  gap: 4px;
+}
+// tlačidlá vpravo hore vyzerajú ako záložky (q-btn class="tab")
+.top-actions .tab {
+  min-height: 0;
+  padding: 8px 12px;
+  border-radius: 12px 12px 0 0;
+}
+// obsah rozbaľovacieho menu (q-menu) pri tlačidlách vpravo hore
+.menu-box {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  padding: 14px;
+  background: var(--sheet);
+}
+.q-menu {
+  border: var(--border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  padding-top: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: -1.5px; // prekryje okraj hárku
+  padding: 8px 16px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--lav);
+  border: var(--border);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+}
+.tab.router-link-active {
+  background: var(--sheet);
+}
+.tab.invite {
+  background: var(--yellow);
+  transform: rotate(-2deg);
+}
+
+/* ---------- hárok s obsahom stránky ---------- */
+.sheet {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--sheet);
+  border: var(--border);
+  border-radius: 0 16px 16px 16px;
+}
+.sheet-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: var(--border);
+}
+.content {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.ticket {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+  background: var(--yellow);
+  border: var(--border);
+  border-radius: 18px;
+  transform: rotate(-1deg);
+}
+.ticket p {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* ---------- správy ---------- */
+.messages {
+  flex: 1;
+  min-height: 0;
+  padding: 18px;
+}
+.message {
+  width: fit-content;
+  max-width: 70%;
+  margin-bottom: 14px;
+  overflow: hidden;
+  background: var(--tint);
+  border: var(--border);
+  border-radius: 12px;
+}
+.message.mine {
+  margin-left: auto; // moje správy vpravo
+}
+.message.mentioned {
+  background: var(--yellow); // správa, kde ma niekto spomenul cez @
+}
+.message-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  border-bottom: var(--border);
+}
+.message p {
+  margin: 0;
+  padding: 8px 12px;
+}
+
+.members {
+  width: 260px;
+  padding: 14px;
+  overflow: auto;
+  background: #e6e0ff;
+  border-left: var(--border);
+}
+.member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ---------- príkazový riadok ---------- */
+.composer {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  background: #e6e0ff;
+  border-top: var(--border);
+}
+.typing-text {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  font-style: italic;
+  border: 1.5px dashed var(--ink);
+  border-radius: 10px;
+}
+.command-line {
+  display: flex;
+  overflow: hidden;
+  background: var(--tint);
+  border: var(--border);
+  border-radius: 12px;
+}
+.command-line span {
+  display: grid;
+  place-items: center;
+  padding: 0 14px;
+  font: 20px var(--title);
+  background: var(--pink);
+  color: var(--yellow);
+  border-right: var(--border);
+}
+.command-line input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  font: inherit;
+  font-weight: 600;
+  background: none;
+  border: 0;
+  outline: none;
+}
+.command-line button {
+  padding: 0 18px;
+  font: 15px var(--title);
+  background: var(--yellow);
+  border: 0;
+  border-left: var(--border);
+  cursor: pointer;
+}
+
+/* ---------- dialóg ---------- */
+.dialog {
+  display: grid;
+  gap: 12px;
+  width: 420px;
+  max-width: 100%;
+  padding: 18px;
+  background: var(--sheet);
+  border: var(--border);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* ---------- nastavenia ---------- */
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+  gap: 16px;
+  padding: 18px;
+  overflow: auto;
+}
+.panel {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
+  overflow: hidden;
+  background: var(--tint);
+  border: var(--border);
+  border-radius: 14px;
+}
+.panel h3 {
+  margin: 0 -14px 4px;
+  padding: 8px 14px;
+  text-transform: uppercase;
+  border-bottom: var(--border);
+}
+.panel h3.pink {
+  background: var(--pink);
+  color: var(--yellow);
+}
+.panel h3.mint {
+  background: var(--mint);
+}
+.panel h3.yellow {
+  background: var(--yellow);
+}
+.panel h3.lav {
+  background: var(--lav);
+}
+.panel label {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* ---------- prihlásenie / registrácia ---------- */
+.auth {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+.auth-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 860px;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--sheet);
+  border: var(--border);
+  border-radius: 20px;
+}
+.auth-intro {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 28px;
+  background: var(--lav);
+  border-right: var(--border);
+}
+.auth-form {
+  display: grid;
+  gap: 6px;
+  padding: 28px;
+}
+.auth-form label {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* ---------- notifikácie ($q.notify) ---------- */
+.q-notification {
+  background: var(--mint) !important;
+  color: var(--ink) !important;
+  font-weight: 700;
+  border: var(--border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+/* ---------- mobil ---------- */
+@media (max-width: 1023px) {
+  .main {
+    padding: 12px;
+  }
+}
+@media (max-width: 700px) {
+  .message {
+    max-width: 90%;
+  }
+  .members {
+    display: none;
+  }
+  .auth-box {
+    grid-template-columns: 1fr;
+  }
+}
