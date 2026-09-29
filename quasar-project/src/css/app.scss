@@ -496,7 +496,10 @@ button.chip {
 }
 .home-invite-copy h2 {
   margin-bottom: 3px;
-  font: 700 15px/1.3 'Figtree', system-ui, sans-serif;
+  font:
+    700 15px/1.3 'Figtree',
+    system-ui,
+    sans-serif;
 }
 .home-grid {
   display: grid;
@@ -595,7 +598,10 @@ button.chip {
   min-height: 30px;
   padding: 4px 9px;
   color: var(--ink);
-  font: 700 13px 'Figtree', system-ui, sans-serif;
+  font:
+    700 13px 'Figtree',
+    system-ui,
+    sans-serif;
   background: var(--sheet);
   border: var(--border);
   border-radius: 8px;
@@ -671,9 +677,85 @@ button.chip {
   max-width: 70%;
   margin-bottom: 14px;
   overflow: hidden;
-  background: var(--tint);
+  background: var(--chat-color, var(--tint));
+  font-family: var(--chat-font, 'Figtree', system-ui, sans-serif);
   border: var(--border);
   border-radius: 12px;
+}
+.chat-view {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.chat-view > .sheet {
+  flex: 1;
+  min-width: 0;
+}
+.chat-menu-appearance {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: var(--border);
+}
+.home-notifications {
+  overflow: hidden;
+  background: var(--sheet);
+  border: var(--border);
+  border-radius: 14px;
+}
+.home-notifications-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--yellow);
+  border-bottom: var(--border);
+}
+.home-notifications-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+.home-notification-list {
+  display: grid;
+}
+.home-notification {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  color: var(--ink);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  cursor: pointer;
+}
+.home-notification:last-child {
+  border-bottom: 0;
+}
+.home-notification.unread {
+  background: var(--pink-l);
+}
+.home-notification:hover {
+  background: var(--lav);
+}
+.home-notification:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+.home-notification span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.home-notification small {
+  overflow-wrap: anywhere;
+}
+.home-add-channel {
+  margin-left: auto;
 }
 .message.mine {
   margin-left: auto; // moje správy vpravo

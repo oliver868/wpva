@@ -4,7 +4,12 @@
     <q-drawer v-model="drawer" show-if-above :width="310">
       <div class="side">
         <router-link class="logo" to="/">
-          <img class="logo-icon" src="/icons/kanale.svg" alt="" aria-hidden="true" />
+          <img
+            class="logo-icon"
+            src="/icons/kanale.svg"
+            alt=""
+            aria-hidden="true"
+          />
           <span class="logo-text">Kanále</span>
         </router-link>
 
@@ -14,7 +19,7 @@
           no-caps
           icon="add"
           label="Vytvoriť kanál"
-          @click="showCreate = true"
+          @click="openCreate()"
         />
 
         <q-input
@@ -51,7 +56,10 @@
                 <small>{{ lastMessage(f) }}</small>
               </div>
             </router-link>
-            <p v-if="sidebarQuery && !filteredFriends.length" class="side-empty">
+            <p
+              v-if="sidebarQuery && !filteredFriends.length"
+              class="side-empty"
+            >
               Nenašli sa priatelia
             </p>
           </q-expansion-item>
@@ -66,7 +74,7 @@
             <router-link
               v-for="s in filteredServers"
               :key="s.name"
-              :to="'/c/' + s.channels[0]"
+              :to="s.channels.length ? '/c/' + s.channels[0] : '/home'"
               class="server"
               :class="{ active: state.activeServer === s.name }"
               @click="state.activeServer = s.name"
@@ -74,7 +82,10 @@
               <q-icon name="dns" size="20px" />
               {{ s.name }}
             </router-link>
-            <p v-if="sidebarQuery && !filteredServers.length" class="side-empty">
+            <p
+              v-if="sidebarQuery && !filteredServers.length"
+              class="side-empty"
+            >
               Nenašli sa servery
             </p>
           </q-expansion-item>
@@ -108,7 +119,10 @@
                     <i class="status" :class="s" aria-hidden="true" />
                   </q-item-section>
                   <q-item-section>{{ s }}</q-item-section>
-                  <q-item-section v-if="state.users[state.me].status === s" side>
+                  <q-item-section
+                    v-if="state.users[state.me].status === s"
+                    side
+                  >
                     <q-icon name="check" size="16px" aria-hidden="true" />
                   </q-item-section>
                 </q-item>
@@ -117,7 +131,9 @@
           </q-btn>
           <div>
             <b>@{{ state.me }}</b>
-            <small>{{ state.profile.firstName }} {{ state.profile.lastName }}</small>
+            <small
+              >{{ state.profile.firstName }} {{ state.profile.lastName }}</small
+            >
           </div>
         </div>
         <q-btn
@@ -136,9 +152,20 @@
       <div class="main">
         <!-- na mobile: tlačidlo na otvorenie ľavého panela -->
         <div class="mobile-bar lt-md">
-          <q-btn class="k-btn" unelevated dense icon="menu" @click="drawer = !drawer" />
+          <q-btn
+            class="k-btn"
+            unelevated
+            dense
+            icon="menu"
+            @click="drawer = !drawer"
+          />
           <span class="logo">
-            <img class="logo-icon" src="/icons/kanale.svg" alt="" aria-hidden="true" />
+            <img
+              class="logo-icon"
+              src="/icons/kanale.svg"
+              alt=""
+              aria-hidden="true"
+            />
             <span class="logo-text">Kanále</span>
           </span>
         </div>
@@ -170,7 +197,11 @@
                 {{ thread.title }}
               </router-link>
             </template>
-            <router-link v-else-if="route.name === 'home'" to="/home" class="tab">
+            <router-link
+              v-else-if="route.name === 'home'"
+              to="/home"
+              class="tab"
+            >
               <q-icon name="dashboard" size="16px" />
               Prehľad
             </router-link>
@@ -194,7 +225,9 @@
               class="tab"
               unelevated
               dense
-              :icon="current.notify === 'off' ? 'notifications_off' : 'notifications'"
+              :icon="
+                current.notify === 'off' ? 'notifications_off' : 'notifications'
+              "
               :label="$q.screen.lt.sm ? '' : 'Notifikácie'"
               aria-label="Notifikácie"
             >
@@ -229,10 +262,28 @@
                   <!-- kanál / server -->
                   <template v-if="channel">
                     <span>Server: {{ serverName }}</span>
-                    <span>Typ: {{ channel.private ? 'súkromný' : 'verejný' }}</span>
+                    <span
+                      >Typ: {{ channel.private ? 'súkromný' : 'verejný' }}</span
+                    >
                     <span>Správca: @{{ channel.admin }}</span>
                     <span>Členov: {{ channel.members.length }}</span>
-                    <q-btn v-close-popup class="k-btn" unelevated no-caps label="Opustiť kanál" @click="run('/cancel')" />
+                    <q-btn
+                      v-close-popup
+                      class="k-btn"
+                      unelevated
+                      no-caps
+                      icon="add"
+                      label="Pridať kanál na server"
+                      @click="openCreate(serverName)"
+                    />
+                    <q-btn
+                      v-close-popup
+                      class="k-btn"
+                      unelevated
+                      no-caps
+                      label="Opustiť kanál"
+                      @click="run('/cancel')"
+                    />
                     <q-btn
                       v-if="channel.admin === state.me"
                       v-close-popup
@@ -257,19 +308,42 @@
                       @click="removeFriend"
                     />
                   </template>
+                  <div class="chat-menu-appearance">
+                    <b>Vzhľad chatu</b>
+                    <q-select
+                      v-model="state.chatAppearance.color"
+                      class="k-input"
+                      borderless
+                      dense
+                      emit-value
+                      map-options
+                      label="Farba správ"
+                      :options="colorOptions"
+                    />
+                    <q-select
+                      v-model="state.chatAppearance.font"
+                      class="k-input"
+                      borderless
+                      dense
+                      emit-value
+                      map-options
+                      label="Písmo správ"
+                      :options="fontOptions"
+                    />
+                  </div>
                 </div>
               </q-menu>
             </q-btn>
           </div>
         </div>
 
-        <router-view />
+        <div class="chat-view" :style="chatStyle"><router-view /></div>
       </div>
     </q-page-container>
 
     <!-- DIALÓG: NOVÝ KANÁL -->
     <q-dialog v-model="showCreate">
-      <q-form class="dialog" @submit="createChannel">
+      <q-form class="dialog" @submit.prevent="submitChannel">
         <h2>Nový kanál</h2>
         <q-input
           v-model="newName"
@@ -277,16 +351,46 @@
           borderless
           dense
           prefix="#"
+          label="Názov kanála"
           placeholder="nazov-kanala"
-          :rules="[v => !!v || 'Zadaj názov']"
+          :rules="[
+            v =>
+              /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v?.trim()) ||
+              'Použi malé písmená, čísla a pomlčky'
+          ]"
         />
-        <q-toggle v-model="newPrivate" label="Súkromný kanál" color="positive" />
-        <p class="hint">
-          To isté ako príkaz /join {{ newName || 'nazov' }}{{ newPrivate ? ' private' : '' }}
-        </p>
+        <q-select
+          v-model="newServer"
+          class="k-input"
+          borderless
+          dense
+          label="Server"
+          :options="state.servers.map(server => server.name)"
+        />
+        <q-toggle
+          v-model="newPrivate"
+          label="Súkromný kanál"
+          color="positive"
+        />
+        <p class="hint"
+          >Kanál sa vytvorí na vybranom serveri. V chate ho môžeš vytvoriť aj
+          príkazom /join.</p
+        >
         <div class="row justify-end q-gutter-sm">
-          <q-btn v-close-popup class="k-btn" unelevated no-caps label="Zrušiť" />
-          <q-btn class="k-btn dark" unelevated no-caps type="submit" label="Vytvoriť" />
+          <q-btn
+            v-close-popup
+            class="k-btn"
+            unelevated
+            no-caps
+            label="Zrušiť"
+          />
+          <q-btn
+            class="k-btn dark"
+            unelevated
+            no-caps
+            type="submit"
+            label="Vytvoriť"
+          />
         </div>
       </q-form>
     </q-dialog>
@@ -306,10 +410,24 @@
           placeholder="nazov-threadu"
           :rules="[v => !!v?.trim() || 'Zadaj názov threadu']"
         />
-        <p class="hint">História správ bude patriť iba do chatu s @{{ friend?.nick }}.</p>
+        <p class="hint"
+          >História správ bude patriť iba do chatu s @{{ friend?.nick }}.</p
+        >
         <div class="row justify-end q-gutter-sm">
-          <q-btn v-close-popup class="k-btn" unelevated no-caps label="Zrušiť" />
-          <q-btn class="k-btn dark" unelevated no-caps type="submit" label="Vytvoriť" />
+          <q-btn
+            v-close-popup
+            class="k-btn"
+            unelevated
+            no-caps
+            label="Zrušiť"
+          />
+          <q-btn
+            class="k-btn dark"
+            unelevated
+            no-caps
+            type="submit"
+            label="Vytvoriť"
+          />
         </div>
       </q-form>
     </q-dialog>
@@ -317,10 +435,16 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { state, findChannel, findServer, runCommand } from '@/stores/chat.js'
+import {
+  state,
+  findChannel,
+  findServer,
+  runCommand,
+  createChannel
+} from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const route = useRoute()
@@ -333,6 +457,26 @@ const showThreadDialog = ref(false)
 const newName = ref('')
 const newThreadName = ref('')
 const newPrivate = ref(false)
+const newServer = ref(state.activeServer)
+const colorOptions = [
+  { label: 'Levanduľová', value: 'lav' },
+  { label: 'Mätová', value: 'mint' },
+  { label: 'Ružová', value: 'pink-l' },
+  { label: 'Svetlá', value: 'tint' }
+]
+const fontOptions = [
+  { label: 'Figtree', value: 'figtree' },
+  { label: 'Systémové písmo', value: 'system' },
+  { label: 'Serifové písmo', value: 'serif' }
+]
+const chatStyle = computed(() => ({
+  '--chat-color': `var(--${state.chatAppearance.color})`,
+  '--chat-font': {
+    figtree: "'Figtree', system-ui, sans-serif",
+    system: 'system-ui, sans-serif',
+    serif: 'Georgia, serif'
+  }[state.chatAppearance.font]
+}))
 const sidebarSearch = ref('')
 const friendsExpanded = ref(true)
 const serversExpanded = ref(true)
@@ -340,17 +484,23 @@ const serversExpanded = ref(true)
 const sidebarQuery = computed(() => normalizeSearch(sidebarSearch.value))
 const filteredFriends = computed(() =>
   state.friends.filter(friend =>
-    normalizeSearch(`${friend.nick} ${state.users[friend.nick]?.name || ''}`).includes(
-      sidebarQuery.value,
-    ),
-  ),
+    normalizeSearch(
+      `${friend.nick} ${state.users[friend.nick]?.name || ''}`
+    ).includes(sidebarQuery.value)
+  )
 )
 const filteredServers = computed(() =>
-  state.servers.filter(server => normalizeSearch(server.name).includes(sidebarQuery.value)),
+  state.servers.filter(server =>
+    normalizeSearch(server.name).includes(sidebarQuery.value)
+  )
 )
 
 function normalizeSearch(value) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('sk').trim()
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('sk')
+    .trim()
 }
 
 watch(sidebarSearch, value => {
@@ -364,7 +514,7 @@ watch(sidebarSearch, value => {
 const tabs = computed(() =>
   state.channels.filter(
     c =>
-      findServer(state.activeServer).channels.includes(c.name) &&
+      findServer(state.activeServer)?.channels.includes(c.name) &&
       (c.invite || c.members.includes(state.me))
   )
 )
@@ -374,16 +524,24 @@ const channel = computed(() => {
   const c = findChannel(route.params.name)
   return c && c.members.includes(state.me) ? c : null
 })
-const friend = computed(() => state.friends.find(f => f.nick === route.params.nick))
+const friend = computed(() =>
+  state.friends.find(f => f.nick === route.params.nick)
+)
 const activeThread = computed(
-  () => friend.value?.threads.find(t => t.id === route.params.threadId) || friend.value?.threads[0],
+  () =>
+    friend.value?.threads.find(t => t.id === route.params.threadId) ||
+    friend.value?.threads[0]
 )
 const current = computed(() => channel.value || activeThread.value)
 const title = computed(() =>
-  channel.value ? '#' + channel.value.name : '@' + friend.value.nick + ' · ' + activeThread.value.title,
+  channel.value
+    ? '#' + channel.value.name
+    : '@' + friend.value.nick + ' · ' + activeThread.value.title
 )
 const serverName = computed(
-  () => state.servers.find(s => s.channels.includes(channel.value.name))?.name || 'žiadny'
+  () =>
+    state.servers.find(s => s.channels.includes(channel.value.name))?.name ||
+    'žiadny'
 )
 
 // spustí príkaz (rovnako ako z príkazového riadku) a ukáže výsledok
@@ -393,11 +551,20 @@ function run(text) {
   if (result.goTo) router.push(result.goTo)
 }
 
-// vytvorenie kanála cez dialóg robí presne to isté ako príkaz /join
-function createChannel() {
-  run('/join ' + newName.value + (newPrivate.value ? ' private' : ''))
+function openCreate(serverName = state.activeServer) {
+  newServer.value = serverName
+  showCreate.value = true
+}
+provide('openCreateChannel', openCreate)
+
+function submitChannel() {
+  const result = createChannel(newName.value, newPrivate.value, newServer.value)
+  $q.notify(result.message)
+  if (!result.goTo) return
   showCreate.value = false
   newName.value = ''
+  newPrivate.value = false
+  router.push(result.goTo)
 }
 
 function friendRoute(person, thread = person.threads[0]) {
@@ -417,7 +584,8 @@ function createThread() {
   if (!name || !friend.value) return
 
   const alreadyExists = friend.value.threads.some(
-    thread => thread.title.toLocaleLowerCase('sk') === name.toLocaleLowerCase('sk'),
+    thread =>
+      thread.title.toLocaleLowerCase('sk') === name.toLocaleLowerCase('sk')
   )
   if (alreadyExists) {
     $q.notify('Thread s týmto názvom už existuje')
@@ -428,7 +596,7 @@ function createThread() {
     id: `thread-${Date.now().toString(36)}-${friend.value.threads.length}`,
     title: name,
     notify: 'all',
-    messages: [],
+    messages: []
   }
   friend.value.threads.push(thread)
   showThreadDialog.value = false

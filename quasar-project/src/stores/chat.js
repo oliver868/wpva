@@ -7,6 +7,23 @@ export const state = reactive({
   profile: { firstName: 'Dano', lastName: '', email: 'dan@fan.sk' },
   notifications: true,
   onlyMentions: true, // notifikácie iba pre správy s @dano
+  chatAppearance: { color: 'lav', font: 'figtree' },
+  notificationFeed: [
+    {
+      id: 'mention-frontend',
+      title: 'Zmienka v #frontend',
+      detail: '@lucia: @dano pozrieš mi potom farby?',
+      to: '/c/frontend',
+      read: false
+    },
+    {
+      id: 'message-mara',
+      title: 'Nová správa od @mara',
+      detail: 'Nezabudni na link na repo :)',
+      to: '/dm/mara/main',
+      read: false
+    }
+  ],
 
   users: {
     dano: { name: 'Dano', status: 'online', color: 'lav' },
@@ -27,7 +44,11 @@ export const state = reactive({
       kicks: {},
       notify: 'all', // notifikácie z tohto kanála: all | mentions | off
       messages: [
-        { from: 'mara', text: 'Ideme na FIIT hackathon v novembri?', time: '09:12' }
+        {
+          from: 'mara',
+          text: 'Ideme na FIIT hackathon v novembri?',
+          time: '09:12'
+        }
       ]
     },
     {
@@ -43,12 +64,36 @@ export const state = reactive({
         text: 'myslím, že infinite scroll spravíme cez q-infinite-scroll a budeme načítavať po 20 sprá'
       },
       messages: [
-        { from: 'mara', text: 'Ráno! Kto ide dnes na cvičenie z VPWA?', time: '10:02' },
-        { from: 'peter', text: 'Ja idem, len ešte dorábam UML diagram.', time: '10:04' },
-        { from: 'tomas', text: 'Ahojte, ako funguje /invite v súkromnom kanáli?', time: '10:11' },
-        { from: 'dano', text: 'Do súkromného kanála pozýva iba správca.', time: '10:12' },
-        { from: 'mara', text: '@dano pošleš mi potom link na repo?', time: '10:15' },
-        { from: 'lucia', text: 'Termín prvej fázy je 18. 10. Nezabudnite na UML.', time: '10:16' },
+        {
+          from: 'mara',
+          text: 'Ráno! Kto ide dnes na cvičenie z VPWA?',
+          time: '10:02'
+        },
+        {
+          from: 'peter',
+          text: 'Ja idem, len ešte dorábam UML diagram.',
+          time: '10:04'
+        },
+        {
+          from: 'tomas',
+          text: 'Ahojte, ako funguje /invite v súkromnom kanáli?',
+          time: '10:11'
+        },
+        {
+          from: 'dano',
+          text: 'Do súkromného kanála pozýva iba správca.',
+          time: '10:12'
+        },
+        {
+          from: 'mara',
+          text: '@dano pošleš mi potom link na repo?',
+          time: '10:15'
+        },
+        {
+          from: 'lucia',
+          text: 'Termín prvej fázy je 18. 10. Nezabudnite na UML.',
+          time: '10:16'
+        },
         { from: 'dano', text: 'Jasné, večer to pushnem.', time: '10:17' }
       ]
     },
@@ -73,7 +118,9 @@ export const state = reactive({
       banned: [],
       kicks: {},
       notify: 'all', // notifikácie z tohto kanála: all | mentions | off
-      messages: [{ from: 'dano', text: 'UML je hotové, pozri repo.', time: '21:20' }]
+      messages: [
+        { from: 'dano', text: 'UML je hotové, pozri repo.', time: '21:20' }
+      ]
     }
   ],
 
@@ -85,7 +132,13 @@ export const state = reactive({
           id: 'main',
           title: 'Hlavný chat',
           notify: 'all',
-          messages: [{ from: 'mara', text: 'Nezabudni na link na repo :)', time: '09:35' }]
+          messages: [
+            {
+              from: 'mara',
+              text: 'Nezabudni na link na repo :)',
+              time: '09:35'
+            }
+          ]
         }
       ]
     },
@@ -96,7 +149,9 @@ export const state = reactive({
           id: 'main',
           title: 'Hlavný chat',
           notify: 'all',
-          messages: [{ from: 'tomas', text: 'Vďaka za pomoc s /invite!', time: 'Včera' }]
+          messages: [
+            { from: 'tomas', text: 'Vďaka za pomoc s /invite!', time: 'Včera' }
+          ]
         }
       ]
     },
@@ -107,7 +162,9 @@ export const state = reactive({
           id: 'main',
           title: 'Hlavný chat',
           notify: 'all',
-          messages: [{ from: 'lucia', text: 'Uvidíme sa v utorok.', time: 'Po' }]
+          messages: [
+            { from: 'lucia', text: 'Uvidíme sa v utorok.', time: 'Po' }
+          ]
         }
       ]
     }
@@ -130,9 +187,46 @@ export function findChannel(name) {
   return state.channels.find(c => c.name === name)
 }
 
+export function createChannel(
+  name,
+  isPrivate,
+  serverName = state.activeServer
+) {
+  const normalized = name.trim().replace(/^#/, '').toLocaleLowerCase('sk')
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized)) {
+    return {
+      message: 'Názov kanála môže obsahovať iba malé písmená, čísla a pomlčky.'
+    }
+  }
+  if (findChannel(normalized))
+    return { message: `Kanál #${normalized} už existuje.` }
+  const server = findServer(serverName)
+  if (!server) return { message: 'Vyber platný server.' }
+
+  state.channels.push({
+    name: normalized,
+    private: isPrivate,
+    admin: state.me,
+    members: [state.me],
+    banned: [],
+    kicks: {},
+    notify: 'all',
+    messages: []
+  })
+  server.channels.push(normalized)
+  state.activeServer = server.name
+  return {
+    message: `Kanál #${normalized} vytvorený v serveri ${server.name}.`,
+    goTo: '/c/' + normalized
+  }
+}
+
 // pridá moju novú správu do zoznamu správ (kanál aj súkromný chat)
 export function addMessage(messages, text) {
-  const time = new Date().toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
+  const time = new Date().toLocaleTimeString('sk-SK', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
   messages.push({ from: state.me, text, time })
 }
 
@@ -141,7 +235,11 @@ export function addOlderMessages(messages) {
   messages.unshift(
     { from: 'peter', text: 'Postgres alebo MySQL?', time: '08:10' },
     { from: 'lucia', text: 'Postgres určite.', time: '08:12' },
-    { from: 'mara', text: 'Nezabudnite si nainštalovať Quasar CLI.', time: '08:20' }
+    {
+      from: 'mara',
+      text: 'Nezabudnite si nainštalovať Quasar CLI.',
+      time: '08:20'
+    }
   )
 }
 
@@ -152,26 +250,19 @@ export function runCommand(text, channel) {
   const me = state.me
 
   if (command === '/join') {
+    if (!name) return { message: 'Použi /join nazov-kanala [private].' }
     const existing = findChannel(name)
     if (!existing) {
-      state.channels.push({
-        name,
-        private: option === 'private',
-        admin: me,
-        members: [me],
-        banned: [],
-        kicks: {},
-        notify: 'all',
-        messages: []
-      })
-      findServer(state.activeServer).channels.push(name) // nový kanál patrí do vybraného servera
-      return { message: `Kanál #${name} vytvorený`, goTo: '/c/' + name }
+      return createChannel(name, option === 'private')
     }
-    if (existing.banned.includes(me)) return { message: 'V tomto kanáli máš ban' }
+    if (existing.banned.includes(me))
+      return { message: 'V tomto kanáli máš ban' }
     if (existing.private && !existing.members.includes(me)) {
       return { message: 'Súkromný kanál – potrebuješ pozvánku' }
     }
     if (!existing.members.includes(me)) existing.members.push(me)
+    const server = state.servers.find(item => item.channels.includes(existing.name))
+    if (server) state.activeServer = server.name
     return { message: `Si v #${name}`, goTo: '/c/' + name }
   }
 
@@ -210,6 +301,9 @@ export function runCommand(text, channel) {
     // keď odíde správca (alebo dá /quit), kanál zanikne
     if (channel.admin === me) {
       state.channels.splice(state.channels.indexOf(channel), 1)
+      state.servers.forEach(server => {
+        server.channels = server.channels.filter(name => name !== channel.name)
+      })
       return { message: `Kanál #${channel.name} zrušený`, goTo: '/' }
     }
     if (command === '/quit') return { message: 'Zrušiť kanál môže iba správca' }
@@ -217,5 +311,8 @@ export function runCommand(text, channel) {
     return { message: `Opustil si #${channel.name}`, goTo: '/' }
   }
 
-  return { message: 'Neznámy príkaz. Skús /join, /invite, /revoke, /kick, /cancel, /quit, /list' }
+  return {
+    message:
+      'Neznámy príkaz. Skús /join, /invite, /revoke, /kick, /cancel, /quit, /list'
+  }
 }
