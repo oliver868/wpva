@@ -103,6 +103,7 @@
           icon="logout"
           label="Odhlásiť sa"
           to="/login"
+          @click="signedIn = false"
         />
       </section>
     </div>
@@ -111,6 +112,7 @@
 
 <script setup>
 import { state } from '@/stores/chat.js'
+import { signedIn } from '@/stores/auth.js'
 const colorOptions = [
   { label: 'Levanduľová', value: 'lav' },
   { label: 'Mätová', value: 'mint' },

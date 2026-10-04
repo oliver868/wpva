@@ -14,6 +14,7 @@
         </router-link>
 
         <q-btn
+          v-if="signedIn"
           class="create"
           unelevated
           no-caps
@@ -23,6 +24,7 @@
         />
 
         <q-input
+          v-if="signedIn"
           v-model="sidebarSearch"
           class="k-input side-search"
           borderless
@@ -36,7 +38,7 @@
           </template>
         </q-input>
 
-        <div class="side-lists">
+        <div v-if="signedIn" class="side-lists">
           <q-expansion-item
             v-model="friendsExpanded"
             dense
@@ -92,7 +94,26 @@
         </div>
 
         <!-- MOJE OSOBNÉ NASTAVENIA (aplikácia) -->
-        <div class="me-box">
+        <div v-if="!signedIn" class="guest-account">
+          <q-icon name="account_circle" size="40px" aria-hidden="true" />
+          <b>Nie si prihlásený</b>
+          <p>Prihlás sa a pokračuj vo svojich kanáloch.</p>
+          <q-btn
+            class="k-btn yellow"
+            unelevated
+            no-caps
+            label="Prihlásiť sa"
+            to="/login"
+          />
+          <q-btn
+            class="k-btn"
+            unelevated
+            no-caps
+            label="Vytvoriť účet"
+            to="/register"
+          />
+        </div>
+        <div v-else class="me-box">
           <q-btn
             class="profile-avatar-trigger"
             flat
@@ -126,6 +147,17 @@
                     <q-icon name="check" size="16px" aria-hidden="true" />
                   </q-item-section>
                 </q-item>
+                <q-item
+                  clickable
+                  v-close-popup
+                  to="/login"
+                  @click="signedIn = false"
+                >
+                  <q-item-section avatar
+                    ><q-icon name="logout"
+                  /></q-item-section>
+                  <q-item-section>Odhlásiť sa</q-item-section>
+                </q-item>
               </q-list>
             </q-menu>
           </q-btn>
@@ -137,6 +169,7 @@
           </div>
         </div>
         <q-btn
+          v-if="signedIn"
           class="k-btn"
           unelevated
           no-caps
@@ -173,7 +206,7 @@
         <div class="top-row">
           <!-- Kanál zobrazuje kanály servera; kamarát zobrazuje len jeho vlastné thready. -->
           <nav class="tabs">
-            <template v-if="channel">
+            <template v-if="channel && signedIn">
               <router-link
                 v-for="c in tabs"
                 :key="c.name"
@@ -186,7 +219,7 @@
                 {{ c.name }}
               </router-link>
             </template>
-            <template v-else-if="friend">
+            <template v-else-if="friend && signedIn">
               <router-link
                 v-for="thread in friend.threads"
                 :key="thread.id"
@@ -197,6 +230,10 @@
                 {{ thread.title }}
               </router-link>
             </template>
+            <router-link v-else-if="isAuthPage" :to="route.path" class="tab">
+              <q-icon name="account_circle" size="16px" />
+              {{ route.path === '/login' ? 'Prihlásenie' : 'Registrácia' }}
+            </router-link>
             <router-link
               v-else-if="route.name === 'home'"
               to="/home"
@@ -208,7 +245,7 @@
           </nav>
 
           <q-btn
-            v-if="friend"
+            v-if="friend && signedIn"
             class="tab new-thread"
             unelevated
             dense
@@ -220,7 +257,7 @@
           />
 
           <!-- NOTIFIKÁCIE A NASTAVENIA pre otvorený kanál alebo kamaráta -->
-          <div v-if="current" class="top-actions">
+          <div v-if="current && signedIn" class="top-actions">
             <q-btn
               class="tab"
               unelevated
@@ -337,7 +374,28 @@
           </div>
         </div>
 
-        <div class="chat-view" :style="chatStyle"><router-view /></div>
+        <div class="chat-view" :style="chatStyle">
+          <router-view v-if="signedIn || isAuthPage" />
+          <q-page v-else class="sheet empty" :style-fn="() => ({})">
+            <q-icon name="account_circle" size="48px" aria-hidden="true" />
+            <h1>Vitaj v Kanáloch</h1>
+            <p>Prihlás sa alebo si vytvor účet a začni konverzáciu.</p>
+            <q-btn
+              class="k-btn yellow"
+              unelevated
+              no-caps
+              label="Prihlásiť sa"
+              to="/login"
+            />
+            <q-btn
+              class="k-btn"
+              unelevated
+              no-caps
+              label="Vytvoriť účet"
+              to="/register"
+            />
+          </q-page>
+        </div>
       </div>
     </q-page-container>
 
@@ -446,10 +504,19 @@ import {
   createChannel
 } from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { signedIn } from '@/stores/auth.js'
 
 const route = useRoute()
 const router = useRouter()
 const $q = useQuasar()
+const isAuthPage = computed(() => ['/login', '/register'].includes(route.path))
+watch(
+  isAuthPage,
+  value => {
+    if (value) signedIn.value = false
+  },
+  { immediate: true }
+)
 
 const drawer = ref(false)
 const showCreate = ref(false)
