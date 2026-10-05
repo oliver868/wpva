@@ -1,5 +1,6 @@
 import MainLayout from '@/layouts/MainLayout.vue'
 import ChannelPage from '@/pages/ChannelPage.vue'
+import ChannelMembersPage from '@/pages/ChannelMembersPage.vue'
 import DirectPage from '@/pages/DirectPage.vue'
 import HomePage from '@/pages/HomePage.vue'
 import SettingsPage from '@/pages/SettingsPage.vue'
@@ -15,6 +16,7 @@ const routes = [
       { path: '', redirect: '/home' },
       { path: 'home', name: 'home', component: HomePage },
       { path: 'c/:name', component: ChannelPage },
+      { path: 'c/:name/members', component: ChannelMembersPage },
       { path: 'dm/:nick/:threadId?', component: DirectPage },
       { path: 'settings', component: SettingsPage },
       { path: 'login', component: LoginPage },

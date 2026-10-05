@@ -306,6 +306,15 @@
                     <span>Členov: {{ channel.members.length }}</span>
                     <q-btn
                       v-close-popup
+                      class="k-btn mint"
+                      unelevated
+                      no-caps
+                      icon="group"
+                      label="Správa členov"
+                      :to="'/c/' + channel.name + '/members'"
+                    />
+                    <q-btn
+                      v-close-popup
                       class="k-btn"
                       unelevated
                       no-caps
@@ -319,7 +328,7 @@
                       unelevated
                       no-caps
                       label="Opustiť kanál"
-                      @click="run('/cancel')"
+                      @click="confirmChannelExit('/cancel')"
                     />
                     <q-btn
                       v-if="channel.admin === state.me"
@@ -328,7 +337,7 @@
                       unelevated
                       no-caps
                       label="Zrušiť kanál"
-                      @click="run('/quit')"
+                      @click="confirmChannelExit('/quit')"
                     />
                   </template>
 
@@ -398,6 +407,47 @@
         </div>
       </div>
     </q-page-container>
+
+    <q-dialog
+      :model-value="!!pendingExit"
+      @update:model-value="pendingExit = null"
+    >
+      <div v-if="pendingExit" class="dialog">
+        <h2>{{
+          pendingExit.admin === state.me ? 'Zrušiť kanál?' : 'Opustiť kanál?'
+        }}</h2>
+        <p v-if="pendingExit.admin === state.me"
+          >Ako správca zrušíš celý kanál #{{ pendingExit.name }}. Všetci
+          členovia stratia prístup k jeho správam.</p
+        >
+        <p v-else
+          >Opustíš #{{ pendingExit.name }} a kanál sa odstráni z tvojho zoznamu.
+          {{
+            pendingExit.private
+              ? 'Na návrat budeš potrebovať novú pozvánku.'
+              : 'Do verejného kanála sa môžeš neskôr znova pripojiť.'
+          }}</p
+        >
+        <div class="row justify-end q-gutter-sm">
+          <q-btn
+            class="k-btn"
+            unelevated
+            no-caps
+            label="Zostať v kanáli"
+            @click="pendingExit = null"
+          />
+          <q-btn
+            class="k-btn dark"
+            unelevated
+            no-caps
+            :label="
+              pendingExit.admin === state.me ? 'Zrušiť kanál' : 'Opustiť kanál'
+            "
+            @click="submitChannelExit"
+          />
+        </div>
+      </div>
+    </q-dialog>
 
     <!-- DIALÓG: NOVÝ KANÁL -->
     <q-dialog v-model="showCreate">
@@ -521,6 +571,13 @@ watch(
 const drawer = ref(false)
 const showCreate = ref(false)
 const showThreadDialog = ref(false)
+const pendingExit = ref(null)
+watch(
+  () => route.fullPath,
+  () => {
+    pendingExit.value = null
+  }
+)
 const newName = ref('')
 const newThreadName = ref('')
 const newPrivate = ref(false)
@@ -611,9 +668,30 @@ const serverName = computed(
     'žiadny'
 )
 
-// spustí príkaz (rovnako ako z príkazového riadku) a ukáže výsledok
-function run(text) {
-  const result = runCommand(text, channel.value)
+function confirmChannelExit(command, target = channel.value) {
+  if (!target) return
+  if (command === '/quit' && target.admin !== state.me) {
+    $q.notify('Zrušiť kanál môže iba správca')
+    return
+  }
+  pendingExit.value = {
+    name: target.name,
+    admin: target.admin,
+    private: target.private,
+    command
+  }
+}
+provide('confirmChannelExit', confirmChannelExit)
+
+function submitChannelExit() {
+  const action = pendingExit.value
+  pendingExit.value = null
+  if (!action) return
+
+  const target = findChannel(action.name)
+  if (!target) return
+  if (!target.members.includes(state.me)) return
+  const result = runCommand(action.command, target)
   $q.notify(result.message)
   if (result.goTo) router.push(result.goTo)
 }

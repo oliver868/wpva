@@ -273,6 +273,29 @@ button.chip {
 .auth-sheet {
   overflow-y: auto;
 }
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  color: #781b35;
+  background: var(--pink-l);
+  border: 1.5px solid currentColor;
+  border-radius: 10px;
+}
+.auth-form {
+  --q-negative: #781b35;
+}
+.auth-error p {
+  margin: 0;
+}
+.auth-error .q-icon {
+  flex: none;
+}
+.auth-error:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
 .auth.auth-in-app {
   min-height: 100%;
   grid-template-columns: minmax(0, 1fr);

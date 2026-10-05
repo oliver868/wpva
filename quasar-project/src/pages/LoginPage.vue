@@ -1,7 +1,6 @@
 <template>
-  <!-- prototyp: prihlásenie iba presmeruje do aplikácie (overenie príde s backendom) -->
   <AuthLayout>
-    <q-form class="auth-form" @submit="submit">
+    <q-form class="auth-form" novalidate @submit="submit">
       <h1>Prihlásenie</h1>
 
       <label for="login-name">Email alebo nickName</label>
@@ -12,6 +11,9 @@
         borderless
         dense
         autocomplete="username"
+        lazy-rules
+        :aria-describedby="loginError ? 'login-error' : undefined"
+        @update:model-value="loginError = ''"
         :rules="[value => !!value?.trim() || 'Zadaj email alebo nick.']"
       />
 
@@ -24,8 +26,23 @@
         dense
         type="password"
         autocomplete="current-password"
+        lazy-rules
+        :aria-describedby="loginError ? 'login-error' : undefined"
+        @update:model-value="loginError = ''"
         :rules="[value => !!value || 'Zadaj heslo.']"
       />
+
+      <div
+        v-if="loginError"
+        id="login-error"
+        ref="errorBox"
+        class="auth-error"
+        role="alert"
+        tabindex="-1"
+      >
+        <q-icon name="error_outline" size="22px" aria-hidden="true" />
+        <p>{{ loginError }}</p>
+      </div>
 
       <q-btn
         class="k-btn dark big"
@@ -42,17 +59,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import { signedIn } from '@/stores/auth.js'
+import { state } from '@/stores/chat.js'
 
 const router = useRouter()
-function submit() {
+async function submit() {
+  const identifier = login.value.trim().toLocaleLowerCase('sk')
+  const matchesNick = identifier === state.me.toLocaleLowerCase('sk')
+  const matchesEmail =
+    identifier === state.profile.email.toLocaleLowerCase('sk')
+  const correctPassword = password.value === 'heslo1234'
+  const correctIdentifier = matchesNick || matchesEmail
+
+  if (!correctIdentifier || !correctPassword) {
+    loginError.value =
+      'Email, nick alebo heslo nie sú správne. Skontroluj údaje a skús to znova.'
+    await nextTick()
+    errorBox.value?.focus()
+    return
+  }
+  loginError.value = ''
   signedIn.value = true
   router.push('/')
 }
 
 const login = ref('dan@fan.sk')
 const password = ref('heslo1234')
+const loginError = ref('')
+const errorBox = ref(null)
 </script>
