@@ -61,7 +61,7 @@
         >
           <header class="home-section-heading pink-heading">
             <h2 id="servers-title">Servery</h2>
-            <span class="chip">{{ state.servers.length }}</span>
+            <span class="chip">{{ serverGroups.length }}</span>
             <q-btn
               class="k-btn home-add-channel"
               unelevated
@@ -111,6 +111,12 @@
                   v-for="channel in server.channels"
                   :key="channel.name"
                   class="home-channel"
+                  :class="{ invite: channel.invite }"
+                  :aria-label="
+                    channel.invite
+                      ? `#${channel.name} – pozvánka do kanála`
+                      : undefined
+                  "
                   type="button"
                   @click="openChannel(server, channel.name)"
                 >
@@ -186,22 +192,37 @@
 <script setup>
 import { computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
-import { state } from '@/stores/chat.js'
+import {
+  state,
+  findChannel,
+  visibleChannels,
+  visibleServers
+} from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const router = useRouter()
 const openCreate = inject('openCreateChannel')
 
-const serverGroups = computed(() =>
-  state.servers.map(server => ({
-    ...server,
-    channels: server.channels
-      .map(name => state.channels.find(channel => channel.name === name))
-      .filter(Boolean)
-  }))
-)
+const serverGroups = computed(() => {
+  const groups = []
+  for (const server of visibleServers()) {
+    const channels = []
+    for (const name of server.channels) {
+      const channel = findChannel(name)
+      if (channel) {
+        channels.push(channel)
+      }
+    }
+    groups.push({
+      name: server.name,
+      channels: channels,
+      hasInvitation: server.hasInvitation
+    })
+  }
+  return groups
+})
 const invitations = computed(() =>
-  state.channels.filter(channel => channel.invite)
+  visibleChannels().filter(channel => channel.invite)
 )
 const notifications = computed(() => [
   ...invitations.value.map(channel => ({

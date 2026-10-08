@@ -1,12 +1,10 @@
-// Vymyslené dáta pre prototyp (1. fáza). Žijú iba v pamäti – po reloade sa obnovia.
-// V 2. fáze ich nahradia dáta z backendu (AdonisJS).
 import { reactive } from 'vue'
 
 export const state = reactive({
-  me: 'dano', // nick prihláseného používateľa
+  me: 'dano',
   profile: { firstName: 'Dano', lastName: '', email: 'dan@fan.sk' },
   notifications: true,
-  onlyMentions: true, // notifikácie iba pre správy s @dano
+  onlyMentions: true,
   chatAppearance: { color: 'lav', font: 'figtree' },
   notificationFeed: [
     {
@@ -38,11 +36,11 @@ export const state = reactive({
       name: 'hackathon',
       private: true,
       admin: 'mara',
-      invite: true, // mám pozvánku, ešte nie som členom
+      invite: true,
       members: ['mara', 'tomas'],
       banned: [],
       kicks: {},
-      notify: 'all', // notifikácie z tohto kanála: all | mentions | off
+      notify: 'all',
       messages: [
         {
           from: 'mara',
@@ -57,8 +55,8 @@ export const state = reactive({
       admin: 'mara',
       members: ['mara', 'dano', 'tomas', 'lucia', 'peter'],
       banned: [],
-      kicks: {}, // { nick: počet hlasov za vyhodenie }
-      notify: 'all', // notifikácie z tohto kanála: all | mentions | off
+      kicks: {},
+      notify: 'all',
       typing: {
         nick: 'tomas',
         text: 'myslím, že infinite scroll spravíme cez q-infinite-scroll a budeme načítavať po 20 sprá'
@@ -104,7 +102,7 @@ export const state = reactive({
       members: ['lucia', 'dano'],
       banned: [],
       kicks: {},
-      notify: 'all', // notifikácie z tohto kanála: all | mentions | off
+      notify: 'all',
       messages: [
         { from: 'lucia', text: 'Kto robí layout pre login?', time: '09:40' },
         { from: 'lucia', text: '@dano pozrieš mi potom farby?', time: '09:48' }
@@ -117,7 +115,7 @@ export const state = reactive({
       members: ['dano'],
       banned: [],
       kicks: {},
-      notify: 'all', // notifikácie z tohto kanála: all | mentions | off
+      notify: 'all',
       messages: [
         { from: 'dano', text: 'UML je hotové, pozri repo.', time: '21:20' }
       ]
@@ -170,21 +168,115 @@ export const state = reactive({
     }
   ],
 
-  // servery = skupiny kanálov; kanály vybraného servera sú hore v záložkách
   servers: [
     { name: 'FIIT STU', channels: ['general', 'frontend'] },
     { name: 'Tím VPWA', channels: ['vpwa-tim'] },
     { name: 'Hackathon', channels: ['hackathon'] }
   ],
-  activeServer: 'FIIT STU' // práve vybraný server
+  activeServer: 'FIIT STU'
 })
 
 export function findServer(name) {
-  return state.servers.find(s => s.name === name)
+  return state.servers.find(server => server.name === name)
 }
 
 export function findChannel(name) {
-  return state.channels.find(c => c.name === name)
+  return state.channels.find(channel => channel.name === name)
+}
+
+export function setChannelVisibility(name, isPrivate) {
+  const channel = findChannel(name)
+  if (!channel) {
+    return { message: 'Kanál už neexistuje.', success: false }
+  }
+  if (
+    channel.admin !== state.me ||
+    !channel.members.includes(state.me) ||
+    channel.banned.includes(state.me)
+  ) {
+    return {
+      message: 'Viditeľnosť môže meniť iba správca, ktorý je členom kanála.',
+      success: false
+    }
+  }
+  if (typeof isPrivate !== 'boolean') {
+    return { message: 'Vyber verejný alebo súkromný kanál.', success: false }
+  }
+
+  channel.private = isPrivate
+  let visibility = 'verejný'
+  if (isPrivate) {
+    visibility = 'súkromný'
+  }
+  return {
+    message: `Kanál #${channel.name} je teraz ${visibility}.`,
+    success: true
+  }
+}
+
+export function visibleChannels(serverName) {
+  const invitedChannels = []
+  const joinedChannels = []
+  const server = findServer(serverName)
+
+  for (const channel of state.channels) {
+    if (serverName !== undefined) {
+      if (!server || !server.channels.includes(channel.name)) {
+        continue
+      }
+    }
+    if (channel.banned.includes(state.me)) {
+      continue
+    }
+    if (channel.invite) {
+      invitedChannels.push(channel)
+    } else if (channel.members.includes(state.me)) {
+      joinedChannels.push(channel)
+    }
+  }
+
+  return invitedChannels.concat(joinedChannels)
+}
+
+export function visibleServers() {
+  const channels = visibleChannels()
+  const invitedServers = []
+  const joinedServers = []
+
+  for (const server of state.servers) {
+    const invitedNames = []
+    const joinedNames = []
+
+    for (const name of server.channels) {
+      const channel = channels.find(channel => channel.name === name)
+      if (!channel) {
+        continue
+      }
+      if (channel.invite) {
+        invitedNames.push(name)
+      } else {
+        joinedNames.push(name)
+      }
+    }
+
+    const channelNames = invitedNames.concat(joinedNames)
+    if (channelNames.length === 0) {
+      continue
+    }
+
+    const visibleServer = {
+      name: server.name,
+      channels: channelNames,
+      hasInvitation: invitedNames.length > 0
+    }
+    if (visibleServer.hasInvitation) {
+      invitedServers.push(visibleServer)
+    } else {
+      joinedServers.push(visibleServer)
+    }
+  }
+
+  return invitedServers.concat(joinedServers)
 }
 
 export function createChannel(
@@ -221,7 +313,6 @@ export function createChannel(
   }
 }
 
-// pridá moju novú správu do zoznamu správ (kanál aj súkromný chat)
 export function addMessage(messages, text) {
   const time = new Date().toLocaleTimeString('sk-SK', {
     hour: '2-digit',
@@ -230,39 +321,40 @@ export function addMessage(messages, text) {
   messages.push({ from: state.me, text, time })
 }
 
-// staršia história pre infinite scroll (vymyslené správy pridané na začiatok)
-export function addOlderMessages(messages) {
-  messages.unshift(
-    { from: 'peter', text: 'Postgres alebo MySQL?', time: '08:10' },
-    { from: 'lucia', text: 'Postgres určite.', time: '08:12' },
-    {
-      from: 'mara',
-      text: 'Nezabudnite si nainštalovať Quasar CLI.',
-      time: '08:20'
-    }
-  )
-}
-
-// Spracuje príkaz z príkazového riadku.
-// Vráti { message } pre notifikáciu a prípadne { goTo } – kam presmerovať.
 export function runCommand(text, channel) {
-  const [command, name, option] = text.trim().split(' ')
+  const parts = text.trim().split(' ')
+  const command = parts[0]
+  const name = parts[1]
+  const option = parts[2]
   const me = state.me
 
   if (command === '/join') {
-    if (!name) return { message: 'Použi /join nazov-kanala [private].' }
+    if (!name) {
+      return { message: 'Použi /join nazov-kanala [private].' }
+    }
     const existing = findChannel(name)
     if (!existing) {
       return createChannel(name, option === 'private')
     }
-    if (existing.banned.includes(me))
+    if (existing.banned.includes(me)) {
       return { message: 'V tomto kanáli máš ban' }
-    if (existing.private && !existing.members.includes(me)) {
+    }
+    if (
+      existing.private &&
+      existing.admin !== me &&
+      !existing.members.includes(me)
+    ) {
       return { message: 'Súkromný kanál – potrebuješ pozvánku' }
     }
-    if (!existing.members.includes(me)) existing.members.push(me)
-    const server = state.servers.find(item => item.channels.includes(existing.name))
-    if (server) state.activeServer = server.name
+    if (!existing.members.includes(me)) {
+      existing.members.push(me)
+    }
+    const server = state.servers.find(item =>
+      item.channels.includes(existing.name)
+    )
+    if (server) {
+      state.activeServer = server.name
+    }
     return { message: `Si v #${name}`, goTo: '/c/' + name }
   }
 
@@ -274,23 +366,29 @@ export function runCommand(text, channel) {
     if (channel.private && channel.admin !== me) {
       return { message: 'Do súkromného kanála pozýva iba správca' }
     }
-    channel.banned = channel.banned.filter(n => n !== name) // správca tým zruší ban
-    if (!channel.members.includes(name)) channel.members.push(name)
+    channel.banned = channel.banned.filter(nick => nick !== name)
+    if (!channel.members.includes(name)) {
+      channel.members.push(name)
+    }
     return { message: `@${name} je v kanáli` }
   }
 
   if (command === '/revoke') {
-    if (channel.admin !== me) return { message: 'Odoberať môže iba správca' }
-    channel.members = channel.members.filter(n => n !== name)
+    if (channel.admin !== me) {
+      return { message: 'Odoberať môže iba správca' }
+    }
+    channel.members = channel.members.filter(nick => nick !== name)
     return { message: `@${name} odobratý` }
   }
 
   if (command === '/kick') {
-    if (channel.private) return { message: 'V súkromnom kanáli použi /revoke' }
+    if (channel.private) {
+      return { message: 'V súkromnom kanáli použi /revoke' }
+    }
     channel.kicks[name] = (channel.kicks[name] || 0) + 1
-    // správca vyhodí hneď, ostatní potrebujú 3 hlasy
+
     if (channel.admin === me || channel.kicks[name] >= 3) {
-      channel.members = channel.members.filter(n => n !== name)
+      channel.members = channel.members.filter(nick => nick !== name)
       channel.banned.push(name)
       return { message: `@${name} má trvalý ban` }
     }
@@ -298,16 +396,21 @@ export function runCommand(text, channel) {
   }
 
   if (command === '/cancel' || command === '/quit') {
-    // keď odíde správca (alebo dá /quit), kanál zanikne
+    if (!channel || !channel.members.includes(me)) {
+      return { message: 'Nie si členom tohto kanála' }
+    }
+    if (command === '/quit' && channel.admin !== me) {
+      return { message: 'Zrušiť kanál môže iba správca' }
+    }
     if (channel.admin === me) {
       state.channels.splice(state.channels.indexOf(channel), 1)
-      state.servers.forEach(server => {
+      for (const server of state.servers) {
         server.channels = server.channels.filter(name => name !== channel.name)
-      })
+      }
       return { message: `Kanál #${channel.name} zrušený`, goTo: '/' }
     }
-    if (command === '/quit') return { message: 'Zrušiť kanál môže iba správca' }
-    channel.members = channel.members.filter(n => n !== me)
+    channel.members = channel.members.filter(nick => nick !== me)
+    channel.invite = false
     return { message: `Opustil si #${channel.name}`, goTo: '/' }
   }
 

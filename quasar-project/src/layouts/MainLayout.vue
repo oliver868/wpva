@@ -1,6 +1,5 @@
 <template>
   <q-layout view="lHh LpR lFf">
-    <!-- ĽAVÝ PANEL -->
     <q-drawer v-model="drawer" show-if-above :width="310">
       <div class="side">
         <router-link class="logo" to="/">
@@ -72,17 +71,29 @@
             label="Servery"
             header-class="side-title"
           >
-            <!-- klik na server ho vyberie; jeho kanály sa ukážu hore v záložkách -->
             <router-link
               v-for="s in filteredServers"
               :key="s.name"
               :to="s.channels.length ? '/c/' + s.channels[0] : '/home'"
               class="server"
-              :class="{ active: state.activeServer === s.name }"
+              :class="{
+                active: state.activeServer === s.name,
+                invite: s.hasInvitation
+              }"
+              :aria-label="
+                s.hasInvitation ? `${s.name} – pozvánka do kanála` : undefined
+              "
               @click="state.activeServer = s.name"
             >
               <q-icon name="dns" size="20px" />
               {{ s.name }}
+              <q-icon
+                v-if="s.hasInvitation"
+                class="server-invite-icon"
+                name="mail_outline"
+                size="18px"
+                aria-hidden="true"
+              />
             </router-link>
             <p
               v-if="sidebarQuery && !filteredServers.length"
@@ -93,7 +104,6 @@
           </q-expansion-item>
         </div>
 
-        <!-- MOJE OSOBNÉ NASTAVENIA (aplikácia) -->
         <div v-if="!signedIn" class="guest-account">
           <q-icon name="account_circle" size="40px" aria-hidden="true" />
           <b>Nie si prihlásený</b>
@@ -183,7 +193,6 @@
 
     <q-page-container>
       <div class="main">
-        <!-- na mobile: tlačidlo na otvorenie ľavého panela -->
         <div class="mobile-bar lt-md">
           <q-btn
             class="k-btn"
@@ -204,19 +213,27 @@
         </div>
 
         <div class="top-row">
-          <!-- Kanál zobrazuje kanály servera; kamarát zobrazuje len jeho vlastné thready. -->
           <nav class="tabs">
-            <template v-if="channel && signedIn">
+            <template v-if="(channel || invitedChannel) && signedIn">
               <router-link
                 v-for="c in tabs"
                 :key="c.name"
                 :to="'/c/' + c.name"
                 class="tab"
                 :class="{ invite: c.invite }"
+                :aria-label="
+                  c.invite ? `#${c.name} – pozvánka do kanála` : undefined
+                "
               >
                 <q-icon v-if="c.private" name="lock" size="14px" />
                 <span v-else>#</span>
                 {{ c.name }}
+                <q-icon
+                  v-if="c.invite"
+                  name="mail_outline"
+                  size="14px"
+                  aria-hidden="true"
+                />
               </router-link>
             </template>
             <template v-else-if="friend && signedIn">
@@ -256,7 +273,6 @@
             @click="showThreadDialog = true"
           />
 
-          <!-- NOTIFIKÁCIE A NASTAVENIA pre otvorený kanál alebo kamaráta -->
           <div v-if="current && signedIn" class="top-actions">
             <q-btn
               class="tab"
@@ -270,7 +286,9 @@
             >
               <q-menu anchor="bottom right" self="top right">
                 <div class="menu-box">
-                  <b>Notifikácie · {{ title }}</b>
+                  <b class="inline-details"
+                    ><span>Notifikácie</span><span>{{ title }}</span></b
+                  >
                   <q-option-group
                     v-model="current.notify"
                     color="positive"
@@ -294,9 +312,10 @@
             >
               <q-menu anchor="bottom right" self="top right">
                 <div class="menu-box">
-                  <b>Nastavenia · {{ title }}</b>
+                  <b class="inline-details"
+                    ><span>Nastavenia</span><span>{{ title }}</span></b
+                  >
 
-                  <!-- kanál / server -->
                   <template v-if="channel">
                     <span>Server: {{ serverName }}</span>
                     <span
@@ -304,6 +323,13 @@
                     >
                     <span>Správca: @{{ channel.admin }}</span>
                     <span>Členov: {{ channel.members.length }}</span>
+                    <q-toggle
+                      v-if="channel.admin === state.me"
+                      :model-value="channel.private"
+                      label="Súkromný kanál"
+                      color="positive"
+                      @update:model-value="updateChannelVisibility($event)"
+                    />
                     <q-btn
                       v-close-popup
                       class="k-btn mint"
@@ -341,7 +367,6 @@
                     />
                   </template>
 
-                  <!-- kamarát -->
                   <template v-else>
                     <span>{{ state.users[friend.nick].name }}</span>
                     <span>Stav: {{ state.users[friend.nick].status }}</span>
@@ -414,10 +439,10 @@
     >
       <div v-if="pendingExit" class="dialog">
         <h2>{{
-          pendingExit.admin === state.me ? 'Zrušiť kanál?' : 'Opustiť kanál?'
+          pendingExitDeletesChannel ? 'Zrušiť kanál?' : 'Opustiť kanál?'
         }}</h2>
-        <p v-if="pendingExit.admin === state.me"
-          >Ako správca zrušíš celý kanál #{{ pendingExit.name }}. Všetci
+        <p v-if="pendingExitDeletesChannel"
+          >Odchodom správcu sa celý kanál #{{ pendingExit.name }} zruší. Všetci
           členovia stratia prístup k jeho správam.</p
         >
         <p v-else
@@ -441,7 +466,7 @@
             unelevated
             no-caps
             :label="
-              pendingExit.admin === state.me ? 'Zrušiť kanál' : 'Opustiť kanál'
+              pendingExitDeletesChannel ? 'Zrušiť kanál' : 'Opustiť kanál'
             "
             @click="submitChannelExit"
           />
@@ -449,95 +474,97 @@
       </div>
     </q-dialog>
 
-    <!-- DIALÓG: NOVÝ KANÁL -->
     <q-dialog v-model="showCreate">
-      <q-form class="dialog" @submit.prevent="submitChannel">
-        <h2>Nový kanál</h2>
-        <q-input
-          v-model="newName"
-          class="k-input"
-          borderless
-          dense
-          prefix="#"
-          label="Názov kanála"
-          placeholder="nazov-kanala"
-          :rules="[
-            v =>
-              /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v?.trim()) ||
-              'Použi malé písmená, čísla a pomlčky'
-          ]"
-        />
-        <q-select
-          v-model="newServer"
-          class="k-input"
-          borderless
-          dense
-          label="Server"
-          :options="state.servers.map(server => server.name)"
-        />
-        <q-toggle
-          v-model="newPrivate"
-          label="Súkromný kanál"
-          color="positive"
-        />
-        <p class="hint"
-          >Kanál sa vytvorí na vybranom serveri. V chate ho môžeš vytvoriť aj
-          príkazom /join.</p
-        >
-        <div class="row justify-end q-gutter-sm">
-          <q-btn
-            v-close-popup
-            class="k-btn"
-            unelevated
-            no-caps
-            label="Zrušiť"
+      <q-card class="dialog">
+        <q-form class="dialog-form" @submit.prevent="submitChannel">
+          <h2>Nový kanál</h2>
+          <q-input
+            v-model="newName"
+            class="k-input"
+            borderless
+            dense
+            prefix="#"
+            label="Názov kanála"
+            placeholder="nazov-kanala"
+            :rules="[
+              v =>
+                /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v?.trim()) ||
+                'Použi malé písmená, čísla a pomlčky'
+            ]"
           />
-          <q-btn
-            class="k-btn dark"
-            unelevated
-            no-caps
-            type="submit"
-            label="Vytvoriť"
+          <q-select
+            v-model="newServer"
+            class="k-input"
+            borderless
+            dense
+            label="Server"
+            :options="state.servers.map(server => server.name)"
           />
-        </div>
-      </q-form>
+          <q-toggle
+            v-model="newPrivate"
+            label="Súkromný kanál"
+            color="positive"
+          />
+          <p class="hint"
+            >Kanál sa vytvorí na vybranom serveri. V chate ho môžeš vytvoriť aj
+            príkazom /join.</p
+          >
+          <div class="row justify-end q-gutter-sm">
+            <q-btn
+              v-close-popup
+              class="k-btn"
+              unelevated
+              no-caps
+              label="Zrušiť"
+            />
+            <q-btn
+              class="k-btn dark"
+              unelevated
+              no-caps
+              type="submit"
+              label="Vytvoriť"
+            />
+          </div>
+        </q-form>
+      </q-card>
     </q-dialog>
 
-    <!-- DIALÓG: NOVÝ THREAD V PRIAMOM CHATE -->
     <q-dialog v-model="showThreadDialog">
-      <q-form class="dialog" @submit="createThread">
-        <h2>Nový thread</h2>
-        <q-input
-          v-model="newThreadName"
-          class="k-input"
-          borderless
-          dense
-          maxlength="40"
-          label="Názov threadu"
-          prefix="@"
-          placeholder="nazov-threadu"
-          :rules="[v => !!v?.trim() || 'Zadaj názov threadu']"
-        />
-        <p class="hint"
-          >História správ bude patriť iba do chatu s @{{ friend?.nick }}.</p
-        >
-        <div class="row justify-end q-gutter-sm">
-          <q-btn
-            v-close-popup
-            class="k-btn"
-            unelevated
-            no-caps
-            label="Zrušiť"
+      <q-card class="dialog">
+        <q-form class="dialog-form" @submit="createThread">
+          <h2>Nový thread</h2>
+          <q-input
+            v-model="newThreadName"
+            class="k-input"
+            borderless
+            dense
+            maxlength="40"
+            label="Názov threadu"
+            prefix="@"
+            placeholder="nazov-threadu"
+            :rules="[v => !!v?.trim() || 'Zadaj názov threadu']"
           />
-          <q-btn
-            class="k-btn dark"
-            unelevated
-            no-caps
-            type="submit"
-            label="Vytvoriť"
-          />
-        </div>
-      </q-form>
+          <p class="hint"
+            >História správ bude patriť iba do chatu s @{{ friend?.nick }}.</p
+          >
+          <div class="row justify-end q-gutter-sm">
+            <q-btn
+              v-close-popup
+              class="k-btn"
+              unelevated
+              no-caps
+              label="Zrušiť"
+            />
+            <q-btn
+              class="k-btn dark"
+              unelevated
+              no-caps
+              type="submit"
+              label="Vytvoriť"
+            />
+          </div>
+        </q-form>
+      </q-card>
     </q-dialog>
   </q-layout>
 </template>
@@ -549,9 +576,11 @@ import { useQuasar } from 'quasar'
 import {
   state,
   findChannel,
-  findServer,
+  visibleChannels,
+  visibleServers,
   runCommand,
-  createChannel
+  createChannel,
+  setChannelVisibility
 } from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { signedIn } from '@/stores/auth.js'
@@ -572,6 +601,15 @@ const drawer = ref(false)
 const showCreate = ref(false)
 const showThreadDialog = ref(false)
 const pendingExit = ref(null)
+const pendingExitDeletesChannel = computed(() => {
+  if (!pendingExit.value) {
+    return false
+  }
+  return (
+    pendingExit.value.command === '/quit' ||
+    pendingExit.value.admin === state.me
+  )
+})
 watch(
   () => route.fullPath,
   () => {
@@ -614,7 +652,7 @@ const filteredFriends = computed(() =>
   )
 )
 const filteredServers = computed(() =>
-  state.servers.filter(server =>
+  visibleServers().filter(server =>
     normalizeSearch(server.name).includes(sidebarQuery.value)
   )
 )
@@ -634,19 +672,19 @@ watch(sidebarSearch, value => {
   }
 })
 
-// záložky: kanály vybraného servera, v ktorých som členom alebo mám pozvánku
-const tabs = computed(() =>
-  state.channels.filter(
-    c =>
-      findServer(state.activeServer)?.channels.includes(c.name) &&
-      (c.invite || c.members.includes(state.me))
+const tabs = computed(() => visibleChannels(state.activeServer))
+const invitedChannel = computed(() =>
+  tabs.value.find(
+    channel => channel.name === route.params.name && channel.invite
   )
 )
 
-// čo je práve otvorené: kanál (ak som členom) alebo chat s kamarátom
 const channel = computed(() => {
-  const c = findChannel(route.params.name)
-  return c && c.members.includes(state.me) ? c : null
+  const currentChannel = findChannel(route.params.name)
+  if (currentChannel && currentChannel.members.includes(state.me)) {
+    return currentChannel
+  }
+  return null
 })
 const friend = computed(() =>
   state.friends.find(f => f.nick === route.params.nick)
@@ -660,13 +698,20 @@ const current = computed(() => channel.value || activeThread.value)
 const title = computed(() =>
   channel.value
     ? '#' + channel.value.name
-    : '@' + friend.value.nick + ' · ' + activeThread.value.title
+    : '@' + friend.value.nick + ' ' + activeThread.value.title
 )
 const serverName = computed(
   () =>
     state.servers.find(s => s.channels.includes(channel.value.name))?.name ||
     'žiadny'
 )
+
+function updateChannelVisibility(isPrivate, target = channel.value) {
+  if (!target) return
+  const result = setChannelVisibility(target.name, isPrivate)
+  if (!result.success) $q.notify(result.message)
+}
+provide('updateChannelVisibility', updateChannelVisibility)
 
 function confirmChannelExit(command, target = channel.value) {
   if (!target) return

@@ -1,5 +1,4 @@
 <template>
-  <!-- prototyp: registrácia iba skontroluje povinné polia a presmeruje do aplikácie -->
   <AuthLayout>
     <q-form class="auth-form" novalidate @submit="submit">
       <h1>Registrácia</h1>
@@ -69,6 +68,17 @@
         :rules="[validatePassword]"
       />
 
+      <div
+        v-if="registrationError"
+        ref="errorBox"
+        class="auth-error"
+        role="alert"
+        tabindex="-1"
+      >
+        <q-icon name="error_outline" size="22px" aria-hidden="true" />
+        <p>{{ registrationError }}</p>
+      </div>
+
       <q-btn
         class="k-btn dark big"
         unelevated
@@ -82,15 +92,29 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
-import { signedIn } from '@/stores/auth.js'
-import { state } from '@/stores/chat.js'
+import { emailTaken, nicknameTaken, registerUser } from '@/stores/auth.js'
 
 const router = useRouter()
-function submit() {
-  signedIn.value = true
+async function submit() {
+  const error = registerUser({
+    firstName: firstName.value,
+    lastName: lastName.value,
+    nick: nick.value,
+    email: email.value,
+    password: password.value
+  })
+  if (error) {
+    registrationError.value = error
+    await nextTick()
+    if (errorBox.value) {
+      errorBox.value.focus()
+    }
+    return
+  }
+  registrationError.value = ''
   router.push('/')
 }
 
@@ -99,6 +123,8 @@ const lastName = ref('')
 const nick = ref('')
 const email = ref('')
 const password = ref('')
+const registrationError = ref('')
+const errorBox = ref(null)
 
 function required(value, message) {
   if (!value || !value.trim()) {
@@ -112,12 +138,8 @@ function validateNick(value) {
   if (!normalized) return 'Zadaj nick.'
   if (!/^[a-zA-Z0-9_-]+$/.test(normalized))
     return 'Použi nick bez medzier a diakritiky. Povolené sú aj čísla, pomlčka a podčiarkovník.'
-  const enteredNick = normalized.toLocaleLowerCase('sk')
-  for (const existingNick of Object.keys(state.users)) {
-    if (existingNick.toLocaleLowerCase('sk') === enteredNick) {
-      return 'Tento nick je už obsadený. Vyber si iný.'
-    }
-  }
+  if (nicknameTaken(normalized))
+    return 'Tento nick je už obsadený. Vyber si iný.'
   return true
 }
 
@@ -127,6 +149,8 @@ function validateEmail(value) {
   if (!validEmail) {
     return 'Zadaj platný email, napríklad meno@example.sk.'
   }
+  if (emailTaken(value))
+    return 'Tento email už má účet. Prihlás sa alebo použi iný email.'
   return true
 }
 

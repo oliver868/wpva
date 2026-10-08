@@ -87,10 +87,12 @@
                 >@{{ nick }}
                 <span v-if="nick === state.me" class="chip">ty</span></b
               >
-              <small
-                >{{ state.users[nick]?.name || nick }} ·
-                {{ statusLabel(state.users[nick]?.status) }}</small
-              >
+              <small>
+                <span class="inline-details">
+                  <span>{{ state.users[nick]?.name || nick }}</span>
+                  <span>{{ statusLabel(state.users[nick]?.status) }}</span>
+                </span>
+              </small>
             </div>
             <span v-if="nick === channel.admin" class="chip">správca</span>
             <q-btn
@@ -204,7 +206,7 @@ const inviteOptions = computed(() => {
     if (channel.value?.banned.includes(nick)) continue
 
     options.push({
-      label: '@' + nick + ' · ' + state.users[nick].name,
+      label: '@' + nick + ' ' + state.users[nick].name,
       value: nick
     })
   }

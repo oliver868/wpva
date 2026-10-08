@@ -3,18 +3,27 @@
     <header class="sheet-header">
       <UserAvatar :nick="friend.nick" />
       <h1>{{ friend.nick }}</h1>
-      <span class="chip"><q-icon name="alternate_email" size="14px" />{{ thread.title }}</span>
-      <span class="chip">
-        {{ state.users[friend.nick].name }} · {{ state.users[friend.nick].status }}
+      <span class="chip"
+        ><q-icon name="alternate_email" size="14px" />{{ thread.title }}</span
+      >
+      <span class="chip inline-details">
+        <span>{{ state.users[friend.nick].name }}</span>
+        <span>{{ state.users[friend.nick].status }}</span>
       </span>
     </header>
 
-    <MessageList :key="friend.nick + '-' + thread.id" :messages="thread.messages" />
+    <MessageList
+      :key="friend.nick + '-' + thread.id"
+      :messages="thread.messages"
+    />
 
     <footer class="composer">
       <form class="command-line" @submit.prevent="send">
         <span>@</span>
-        <input v-model="input" :placeholder="'správa pre ' + friend.nick + ' · ' + thread.title" />
+        <input
+          v-model="input"
+          :placeholder="'správa pre ' + friend.nick + ' ' + thread.title"
+        />
         <button>POSLAŤ</button>
       </form>
     </footer>
@@ -29,9 +38,13 @@ import MessageList from '@/components/MessageList.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const route = useRoute()
-const friend = computed(() => state.friends.find(f => f.nick === route.params.nick))
+const friend = computed(() =>
+  state.friends.find(f => f.nick === route.params.nick)
+)
 const thread = computed(
-  () => friend.value?.threads.find(t => t.id === route.params.threadId) || friend.value?.threads[0],
+  () =>
+    friend.value?.threads.find(t => t.id === route.params.threadId) ||
+    friend.value?.threads[0]
 )
 const input = ref('')
 

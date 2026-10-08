@@ -62,19 +62,11 @@
 import { nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
-import { signedIn } from '@/stores/auth.js'
-import { state } from '@/stores/chat.js'
+import { signIn } from '@/stores/auth.js'
 
 const router = useRouter()
 async function submit() {
-  const identifier = login.value.trim().toLocaleLowerCase('sk')
-  const matchesNick = identifier === state.me.toLocaleLowerCase('sk')
-  const matchesEmail =
-    identifier === state.profile.email.toLocaleLowerCase('sk')
-  const correctPassword = password.value === 'heslo1234'
-  const correctIdentifier = matchesNick || matchesEmail
-
-  if (!correctIdentifier || !correctPassword) {
+  if (!signIn(login.value, password.value)) {
     loginError.value =
       'Email, nick alebo heslo nie sú správne. Skontroluj údaje a skús to znova.'
     await nextTick()
@@ -82,7 +74,6 @@ async function submit() {
     return
   }
   loginError.value = ''
-  signedIn.value = true
   router.push('/')
 }
 

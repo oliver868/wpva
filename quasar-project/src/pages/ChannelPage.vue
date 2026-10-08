@@ -1,6 +1,5 @@
 <template>
   <q-page class="sheet" :style-fn="() => ({})">
-    <!-- 1. kanál neexistuje -->
     <div v-if="!channel" class="empty">
       <h2>#{{ $route.params.name }} neexistuje</h2>
       <q-btn
@@ -33,7 +32,6 @@
       />
     </div>
 
-    <!-- 2. mám pozvánku -->
     <div v-else-if="channel.invite" class="empty">
       <div class="ticket">
         <q-icon name="mail_outline" size="40px" aria-hidden="true" />
@@ -66,7 +64,6 @@
       </div>
     </div>
 
-    <!-- 3. nie som členom -->
     <div
       v-else-if="!channel.members.includes(state.me)"
       class="empty channel-access"
@@ -76,16 +73,21 @@
         size="44px"
         aria-hidden="true"
       />
-      <h2 v-if="channel.private">Tento kanál je súkromný</h2>
+      <h2 v-if="channel.private && channel.admin !== state.me"
+        >Tento kanál je súkromný</h2
+      >
       <h2 v-else>Pripoj sa do #{{ channel.name }}</h2>
-      <p v-if="channel.private"
+      <p v-if="channel.admin === state.me"
+        >Zostávaš správcom tohto kanála. Môžeš sa znova pripojiť.</p
+      >
+      <p v-else-if="channel.private"
         >Na prístup do #{{ channel.name }} potrebuješ pozvánku od správcu @{{
           channel.admin
         }}.</p
       >
       <p v-else>Po pripojení uvidíš históriu správ a môžeš písať do kanála.</p>
       <q-btn
-        v-if="!channel.private"
+        v-if="!channel.private || channel.admin === state.me"
         class="k-btn yellow"
         unelevated
         no-caps
@@ -101,7 +103,6 @@
       />
     </div>
 
-    <!-- 4. chat kanála -->
     <template v-else>
       <header class="sheet-header">
         <h1>
@@ -109,12 +110,18 @@
           <span v-else>#</span>
           {{ channel.name }}
         </h1>
-        <span class="chip">
-          {{ channel.private ? 'súkromný' : 'verejný' }} · správca @{{
-            channel.admin
-          }}
+        <span class="chip inline-details">
+          <span>{{ channel.private ? 'súkromný' : 'verejný' }}</span>
+          <span>správca @{{ channel.admin }}</span>
         </span>
         <q-space />
+        <q-toggle
+          v-if="channel.admin === state.me"
+          :model-value="channel.private"
+          label="Súkromný kanál"
+          color="positive"
+          @update:model-value="updateChannelVisibility($event, channel)"
+        />
         <q-btn
           v-if="!channel.private || channel.admin === state.me"
           class="k-btn"
@@ -151,7 +158,6 @@
       </div>
 
       <footer class="composer">
-        <!-- kto práve píše; po kliknutí vidno rozpísaný text -->
         <div class="composer-tools">
           <div v-if="channel.typing">
             <button class="chip" @click="showTyping = !showTyping">
@@ -180,51 +186,12 @@
                   rovnako ako správu.</p
                 >
                 <dl>
-                  <div
-                    ><dt><code>/join nazov-kanala</code></dt
-                    ><dd
-                      >Pripojí ťa do verejného kanála. Ak neexistuje, vytvorí
-                      ho.</dd
-                    ></div
-                  >
-                  <div
-                    ><dt><code>/join nazov-kanala private</code></dt
-                    ><dd>Vytvorí nový súkromný kanál.</dd></div
-                  >
-                  <div v-if="!channel.private || channel.admin === state.me"
-                    ><dt><code>/invite nick</code></dt
-                    ><dd>Pozve používateľa. Nick píš bez @.</dd></div
-                  >
-                  <div v-if="channel.private && channel.admin === state.me"
-                    ><dt><code>/revoke nick</code></dt
-                    ><dd
-                      >Odoberie používateľovi prístup do súkromného kanála.</dd
-                    ></div
-                  >
-                  <div v-if="!channel.private"
-                    ><dt><code>/kick nick</code></dt
-                    ><dd>{{
-                      channel.admin === state.me
-                        ? 'Vyhodí používateľa natrvalo.'
-                        : 'Pridá hlas za vyhodenie používateľa. Na trvalý ban sú potrebné tri hlasy.'
-                    }}</dd></div
-                  >
-                  <div
-                    ><dt><code>/list</code></dt
-                    ><dd>Zobrazí členov tohto kanála.</dd></div
-                  >
-                  <div
-                    ><dt><code>/cancel</code></dt
-                    ><dd>{{
-                      channel.admin === state.me
-                        ? 'Opustí a zruší celý kanál, pretože si jeho správca.'
-                        : 'Opustí tento kanál.'
-                    }}</dd></div
-                  >
-                  <div v-if="channel.admin === state.me"
-                    ><dt><code>/quit</code></dt
-                    ><dd>Zruší celý kanál aj pre ostatných členov.</dd></div
-                  >
+                  <div v-for="command in availableCommands" :key="command.name">
+                    <dt
+                      ><code>{{ command.usage }}</code></dt
+                    >
+                    <dd>{{ command.description }}</dd>
+                  </div>
                   <div
                     ><dt><code>@nick text správy</code></dt
                     ><dd
@@ -241,6 +208,50 @@
           </q-btn>
         </div>
 
+        <section
+          v-if="showCommands"
+          class="command-suggestions"
+          aria-label="Nápoveda príkazov"
+        >
+          <div class="command-suggestions-heading">
+            <b>Dostupné príkazy</b>
+            <span id="command-suggestions-hint" class="inline-details">
+              <span>↑ ↓ výber</span>
+              <span>Tab doplní</span>
+              <span>Esc zavrie</span>
+            </span>
+          </div>
+          <div
+            v-if="matchingCommands.length"
+            id="command-suggestions"
+            role="listbox"
+            aria-label="Dostupné príkazy"
+            class="command-suggestions-list"
+          >
+            <button
+              v-for="(command, index) in matchingCommands"
+              :id="'command-option-' + index"
+              :key="command.name"
+              type="button"
+              role="option"
+              tabindex="-1"
+              :aria-selected="activeCommand === index"
+              :class="[
+                'command-suggestion',
+                { 'is-active': activeCommand === index }
+              ]"
+              @pointerdown.prevent
+              @click="completeCommand(command)"
+            >
+              <code>{{ command.usage }}</code>
+              <span>{{ command.description }}</span>
+            </button>
+          </div>
+          <p v-else role="status" class="command-suggestions-empty"
+            >Tento príkaz nepoznáme. Napíš / a vyber si zo zoznamu.</p
+          >
+        </section>
+
         <form class="command-line" @submit.prevent="send(input)">
           <span aria-hidden="true"
             ><q-icon
@@ -248,9 +259,31 @@
               size="20px"
           /></span>
           <input
+            ref="composerInput"
             v-model="input"
             :placeholder="'Napíš správu do #' + channel.name"
             aria-label="Správa alebo príkaz"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-haspopup="listbox"
+            :aria-expanded="showCommands && matchingCommands.length > 0"
+            :aria-controls="
+              showCommands && matchingCommands.length
+                ? 'command-suggestions'
+                : undefined
+            "
+            :aria-activedescendant="
+              showCommands && matchingCommands.length
+                ? 'command-option-' + activeCommand
+                : undefined
+            "
+            :aria-describedby="
+              showCommands ? 'command-suggestions-hint' : undefined
+            "
+            autocomplete="off"
+            @focus="inputFocused = true"
+            @blur="inputFocused = false"
+            @keydown="handleCommandKey"
           />
           <button>POSLAŤ</button>
         </form>
@@ -260,7 +293,7 @@
 </template>
 
 <script setup>
-import { computed, inject, ref } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { state, findChannel, addMessage, runCommand } from '@/stores/chat.js'
@@ -271,13 +304,165 @@ const route = useRoute()
 const router = useRouter()
 const $q = useQuasar()
 const confirmChannelExit = inject('confirmChannelExit')
+const updateChannelVisibility = inject('updateChannelVisibility')
 
 const channel = computed(() => findChannel(route.params.name))
 const input = ref('')
 const showMembers = ref(false)
 const showTyping = ref(false)
+const composerInput = ref(null)
+const inputFocused = ref(false)
+const commandsDismissed = ref(false)
+const activeCommand = ref(0)
 
-// odoslanie z príkazového riadku: obyčajná správa alebo príkaz začínajúci "/"
+const availableCommands = computed(() => {
+  const isAdmin = channel.value?.admin === state.me
+  const isPrivate = channel.value?.private
+  const commands = [
+    {
+      name: '/join',
+      usage: '/join nazov-kanala [private]',
+      description:
+        'Pripojí ťa do kanála alebo vytvorí nový. Pridaním private vytvoríš súkromný kanál.',
+      arguments: true
+    },
+    {
+      name: '/invite',
+      usage: '/invite nick',
+      description: 'Pozve používateľa do tohto kanála. Nick píš bez @.',
+      arguments: true,
+      available: !isPrivate || isAdmin
+    },
+    {
+      name: '/revoke',
+      usage: '/revoke nick',
+      description:
+        'Odoberie používateľovi prístup do tohto kanála. Nick píš bez @.',
+      arguments: true,
+      available: isAdmin
+    },
+    {
+      name: '/kick',
+      usage: '/kick nick',
+      description: isAdmin
+        ? 'Vyhodí používateľa z kanála a udelí mu trvalý ban. Nick píš bez @.'
+        : 'Pridá hlas za vyhodenie používateľa. Na trvalý ban sú potrebné tri hlasy.',
+      arguments: true,
+      available: !isPrivate
+    },
+    {
+      name: '/list',
+      usage: '/list',
+      description: 'Zobrazí členov tohto kanála.'
+    },
+    {
+      name: '/cancel',
+      usage: '/cancel',
+      description: isAdmin
+        ? 'Odchodom správcu sa celý kanál zruší aj pre ostatných členov.'
+        : 'Opustí tento kanál. Kanál zostane zachovaný.'
+    },
+    {
+      name: '/quit',
+      usage: '/quit',
+      description: 'Zruší celý kanál aj pre ostatných členov.',
+      available: isAdmin
+    }
+  ]
+  return commands.filter(command => command.available !== false)
+})
+const matchingCommands = computed(() => {
+  const prefix = input.value.split(/\s/)[0]
+  return availableCommands.value.filter(command =>
+    command.name.startsWith(prefix)
+  )
+})
+const showCommands = computed(
+  () =>
+    inputFocused.value &&
+    input.value.startsWith('/') &&
+    !commandsDismissed.value
+)
+
+watch(
+  input,
+  () => {
+    commandsDismissed.value = false
+    activeCommand.value = 0
+  },
+  { flush: 'sync' }
+)
+watch(
+  () => route.params.name,
+  () => {
+    input.value = ''
+    commandsDismissed.value = false
+    activeCommand.value = 0
+  }
+)
+
+function completeCommand(command) {
+  input.value = command.name
+  if (command.arguments) {
+    input.value += ' '
+  }
+  commandsDismissed.value = true
+  if (composerInput.value) {
+    composerInput.value.focus()
+  }
+}
+
+function handleCommandKey(event) {
+  if (!showCommands.value || event.isComposing) {
+    return
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    commandsDismissed.value = true
+    return
+  }
+  const commandCount = matchingCommands.value.length
+  if (commandCount === 0) {
+    return
+  }
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (event.key === 'ArrowDown') {
+      activeCommand.value += 1
+    } else {
+      activeCommand.value -= 1
+    }
+    if (activeCommand.value >= commandCount) {
+      activeCommand.value = 0
+    } else if (activeCommand.value < 0) {
+      activeCommand.value = commandCount - 1
+    }
+
+    nextTick(() => {
+      const optionId = 'command-option-' + activeCommand.value
+      const option = document.getElementById(optionId)
+      if (option) {
+        option.scrollIntoView({ block: 'nearest' })
+      }
+    })
+    return
+  }
+
+  const pressedTab = event.key === 'Tab' && !event.shiftKey
+  const pressedEnter = event.key === 'Enter'
+  const hasArguments = /\s/.test(input.value)
+
+  if ((pressedTab || pressedEnter) && !hasArguments) {
+    const command = matchingCommands.value[activeCommand.value]
+    if (pressedEnter && input.value === command.name) {
+      return
+    }
+    event.preventDefault()
+    completeCommand(command)
+  }
+}
+
 function send(text) {
   input.value = ''
   if (!text.trim()) return
@@ -305,7 +490,7 @@ function accept() {
 }
 
 function decline() {
-  state.channels.splice(state.channels.indexOf(channel.value), 1)
+  channel.value.invite = false
   router.push('/')
 }
 </script>
@@ -359,5 +544,66 @@ function decline() {
 }
 .command-help code {
   font-size: 13px;
+}
+.command-suggestions {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--tint);
+  color: var(--ink);
+  border: var(--border);
+  border-radius: 12px;
+}
+.command-suggestions-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ink);
+}
+.command-suggestions-heading span {
+  font-size: 12px;
+}
+.command-suggestions-list {
+  max-height: min(320px, 32dvh);
+  overflow-y: auto;
+}
+.command-suggestion {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.command-suggestion + .command-suggestion {
+  border-top: 1px solid var(--lav);
+}
+.command-suggestion:hover,
+.command-suggestion.is-active {
+  background: var(--lav);
+}
+.command-suggestion:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+.command-suggestion code {
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.command-suggestion span,
+.command-suggestions-empty {
+  font-size: 13px;
+}
+.command-suggestions-empty {
+  margin: 0;
+  padding: 12px;
 }
 </style>

@@ -1,13 +1,10 @@
-// Globálne štýly aplikácie "Kanále"
-// Pravidlá dizajnu: žiadne tiene, okraje 1.5px, iba pastelové farby.
-
 :root {
-  --ink: #221e3a; // text a okraje
-  --muted: #6b5a8e; // menej dôležitý text
-  --bg: #f7cadd; // pozadie stránky
-  --side: #dcd5fc; // ľavý panel
-  --sheet: #fff0f7; // obsah (hárok)
-  --tint: #f3efff; // polia, správy
+  --ink: #221e3a;
+  --muted: #6b5a8e;
+  --bg: #f7cadd;
+  --side: #dcd5fc;
+  --sheet: #fff0f7;
+  --tint: #f3efff;
   --lav: #c9c4f5;
   --blue: #9db8ff;
   --yellow: #ffd23f;
@@ -50,7 +47,6 @@ h3 {
   line-height: 1.4;
 }
 
-/* ---------- spoločné prvky ---------- */
 .logo {
   display: inline-flex;
   align-items: center;
@@ -84,13 +80,18 @@ button.chip {
   cursor: pointer;
   background: var(--mint);
 }
+.inline-details {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
 .hint {
   margin: 0;
   font-size: 12px;
   color: var(--muted);
 }
 
-// tlačidlá: <q-btn class="k-btn yellow" unelevated no-caps />
 .k-btn {
   border: var(--border);
   border-radius: 9px;
@@ -116,7 +117,6 @@ button.chip {
   font-family: var(--title);
 }
 
-// textové polia: <q-input class="k-input" borderless dense />
 .k-input .q-field__control {
   padding: 0 12px;
   background: var(--tint);
@@ -127,7 +127,6 @@ button.chip {
   background: #fff1b8;
 }
 
-// avatar so stavom
 .avatar {
   position: relative;
   flex: none;
@@ -167,7 +166,6 @@ button.chip {
   background: #b7a9d6;
 }
 
-/* ---------- ľavý panel ---------- */
 .side {
   display: flex;
   flex-direction: column;
@@ -198,7 +196,7 @@ button.chip {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1; // priatelia + servery zaberú voľné miesto a scrollujú sa
+  flex: 1;
   overflow: auto;
 }
 .side-empty {
@@ -207,7 +205,7 @@ button.chip {
   color: var(--muted);
   font-size: 12px;
 }
-// hlavička rozbaľovacej sekcie (q-expansion-item header-class="side-title")
+
 .side-title {
   min-height: 40px;
   padding: 8px 10px;
@@ -229,6 +227,18 @@ button.chip {
 .server.active {
   background: var(--sheet);
   border-color: var(--ink);
+}
+.server.invite {
+  background: var(--yellow);
+  border-color: var(--ink);
+}
+.server-invite-icon {
+  flex: none;
+  margin-left: auto;
+}
+.server:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 .friend {
   display: flex;
@@ -350,7 +360,6 @@ button.chip {
   outline-offset: 1px;
 }
 
-/* ---------- hlavná časť + záložky ---------- */
 .main {
   display: flex;
   flex-direction: column;
@@ -362,7 +371,7 @@ button.chip {
   align-items: center;
   gap: 10px;
 }
-// riadok so záložkami kanálov a tlačidlami vpravo
+
 .top-row {
   display: flex;
   align-items: flex-end;
@@ -372,13 +381,13 @@ button.chip {
   display: flex;
   gap: 4px;
 }
-// tlačidlá vpravo hore vyzerajú ako záložky (q-btn class="tab")
+
 .top-actions .tab {
   min-height: 0;
   padding: 8px 12px;
   border-radius: 12px 12px 0 0;
 }
-// obsah rozbaľovacieho menu (q-menu) pri tlačidlách vpravo hore
+
 .menu-box {
   display: grid;
   gap: 6px;
@@ -405,7 +414,7 @@ button.chip {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: -1.5px; // prekryje okraj hárku
+  margin-bottom: -1.5px;
   padding: 8px 16px;
   font-weight: 800;
   color: var(--ink);
@@ -437,7 +446,6 @@ button.chip {
   font-weight: 800;
 }
 
-/* ---------- hárok s obsahom stránky ---------- */
 .sheet {
   flex: 1;
   display: flex;
@@ -485,7 +493,6 @@ button.chip {
   font-weight: 700;
 }
 
-/* ---------- domovský prehľad ---------- */
 .home-sheet {
   border-radius: 16px;
 }
@@ -654,6 +661,9 @@ button.chip {
 .home-channel:hover {
   background: var(--yellow);
 }
+.home-channel.invite {
+  background: var(--yellow);
+}
 .home-friend {
   display: flex;
   align-items: center;
@@ -710,7 +720,6 @@ button.chip {
   padding: 22px 16px;
 }
 
-/* ---------- správy ---------- */
 .messages {
   flex: 1;
   min-height: 0;
@@ -802,10 +811,10 @@ button.chip {
   margin-left: auto;
 }
 .message.mine {
-  margin-left: auto; // moje správy vpravo
+  margin-left: auto;
 }
 .message.mentioned {
-  background: var(--yellow); // správa, kde ma niekto spomenul cez @
+  background: var(--yellow);
 }
 .message-head {
   display: flex;
@@ -835,7 +844,6 @@ button.chip {
   margin-top: 8px;
 }
 
-/* ---------- príkazový riadok ---------- */
 .composer {
   display: grid;
   gap: 8px;
@@ -857,7 +865,7 @@ button.chip {
   border: var(--border);
   border-radius: 12px;
 }
-.command-line span {
+.command-line > span {
   display: grid;
   place-items: center;
   padding: 0 14px;
@@ -885,7 +893,6 @@ button.chip {
   cursor: pointer;
 }
 
-/* ---------- dialóg ---------- */
 .dialog {
   display: grid;
   gap: 12px;
@@ -897,8 +904,11 @@ button.chip {
   border-radius: 16px;
   box-shadow: none;
 }
+.dialog-form {
+  display: grid;
+  gap: 12px;
+}
 
-/* ---------- nastavenia ---------- */
 .panels {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -940,7 +950,6 @@ button.chip {
   font-weight: 800;
 }
 
-/* ---------- prihlásenie / registrácia ---------- */
 .auth {
   display: grid;
   place-items: center;
@@ -976,7 +985,6 @@ button.chip {
   font-weight: 800;
 }
 
-/* ---------- notifikácie ($q.notify) ---------- */
 .q-notification {
   background: var(--mint) !important;
   color: var(--ink) !important;
@@ -986,7 +994,6 @@ button.chip {
   box-shadow: none;
 }
 
-/* ---------- mobil ---------- */
 @media (max-width: 1023px) {
   .main {
     padding: 12px;

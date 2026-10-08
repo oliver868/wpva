@@ -6,7 +6,6 @@ import HomePage from '@/pages/HomePage.vue'
 import SettingsPage from '@/pages/SettingsPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
-import ErrorNotFound from '@/pages/ErrorNotFound.vue'
 
 const routes = [
   {
@@ -22,13 +21,6 @@ const routes = [
       { path: 'login', component: LoginPage },
       { path: 'register', component: RegisterPage }
     ]
-  },
-
-  // Always leave this as last one,
-  // but you can also remove it
-  {
-    path: '/:catchAll(.*)*',
-    component: ErrorNotFound
   }
 ]
 
