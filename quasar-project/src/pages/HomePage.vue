@@ -40,7 +40,7 @@
             @click="openNotification(item)"
           >
             <q-icon
-              :name="item.invitation ? 'mail' : 'chat_bubble'"
+              :name="item.icon || (item.invitation ? 'mail' : 'chat_bubble')"
               size="20px"
               aria-hidden="true"
             />

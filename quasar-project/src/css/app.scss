@@ -232,6 +232,33 @@ button.chip {
   background: var(--yellow);
   border-color: var(--ink);
 }
+// "Moje kanály" v ľavom paneli
+.side-channel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+}
+.side-channel > span:first-of-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side-channel.active {
+  background: var(--sheet);
+  border-color: var(--ink);
+}
+// pozvánka: zvýraznená žltou a v zozname navrchu
+.side-channel.invite {
+  background: var(--yellow);
+  border-color: var(--ink);
+}
 .server-invite-icon {
   flex: none;
   margin-left: auto;
@@ -494,7 +521,7 @@ button.chip {
 }
 
 .home-sheet {
-  border-radius: 16px;
+  border-radius: 0 16px 16px 16px; // ľavý horný roh rovný, aby naň nadväzovala záložka
 }
 .home-content {
   flex: 1;
@@ -799,7 +826,7 @@ button.chip {
   outline: 2px solid var(--ink);
   outline-offset: -3px;
 }
-.home-notification span {
+.home-notification > span {
   display: grid;
   flex: 1;
   min-width: 0;

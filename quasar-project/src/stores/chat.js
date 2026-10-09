@@ -1,5 +1,24 @@
 import { reactive } from 'vue'
 
+// staršia história #general, aby bolo čo načítavať pri scrolle hore (infinite scroll)
+function olderMessages() {
+  const texts = [
+    ['lucia', 'Ahojte, vitajte v kanáli!'],
+    ['mara', 'Ahoj :)'],
+    ['tomas', 'Čaute.'],
+    ['peter', 'Postgres alebo MySQL?'],
+    ['lucia', 'Postgres určite.'],
+    ['mara', 'Nezabudnite si nainštalovať Quasar CLI.']
+  ]
+  const messages = []
+  for (let i = 0; i < 36; i++) {
+    const [from, text] = texts[i % texts.length]
+    const minute = String(i).padStart(2, '0')
+    messages.push({ from, text, time: '08:' + minute })
+  }
+  return messages
+}
+
 export const state = reactive({
   me: 'dano',
   profile: { firstName: 'Dano', lastName: '', email: 'dan@fan.sk' },
@@ -7,6 +26,14 @@ export const state = reactive({
   onlyMentions: true,
   chatAppearance: { color: 'lav', font: 'figtree' },
   notificationFeed: [
+    {
+      id: 'closed-stary-projekt',
+      icon: 'history_toggle_off',
+      title: 'Kanál #stary-projekt zanikol',
+      detail: '30 dní v ňom nepribudla žiadna správa.',
+      to: '/c/stary-projekt',
+      read: false
+    },
     {
       id: 'mention-frontend',
       title: 'Zmienka v #frontend',
@@ -21,6 +48,12 @@ export const state = reactive({
       to: '/dm/mara/main',
       read: false
     }
+  ],
+
+  // zaniknuté kanály – aby sa dali odlíšiť od kanálov, ktoré nikdy neexistovali
+  // reason: 'inactive' (30 dní bez správy) | 'deleted' (zrušil ho správca)
+  closedChannels: [
+    { name: 'stary-projekt', reason: 'inactive', by: 'mara', date: '2. 10. 2026' }
   ],
 
   users: {
@@ -62,6 +95,7 @@ export const state = reactive({
         text: 'myslím, že infinite scroll spravíme cez q-infinite-scroll a budeme načítavať po 20 sprá'
       },
       messages: [
+        ...olderMessages(),
         {
           from: 'mara',
           text: 'Ráno! Kto ide dnes na cvičenie z VPWA?',
@@ -307,6 +341,10 @@ export function createChannel(
   })
   server.channels.push(normalized)
   state.activeServer = server.name
+  // názov zaniknutého kanála je znova voľný
+  state.closedChannels = state.closedChannels.filter(
+    closed => closed.name !== normalized
+  )
   return {
     message: `Kanál #${normalized} vytvorený v serveri ${server.name}.`,
     goTo: '/c/' + normalized
@@ -407,6 +445,12 @@ export function runCommand(text, channel) {
       for (const server of state.servers) {
         server.channels = server.channels.filter(name => name !== channel.name)
       }
+      state.closedChannels.push({
+        name: channel.name,
+        reason: 'deleted',
+        by: me,
+        date: new Date().toLocaleDateString('sk-SK')
+      })
       return { message: `Kanál #${channel.name} zrušený`, goTo: '/' }
     }
     channel.members = channel.members.filter(nick => nick !== me)

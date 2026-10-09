@@ -12,6 +12,8 @@
       </span>
     </header>
 
+    <StatusBanner />
+
     <MessageList
       :key="friend.nick + '-' + thread.id"
       :messages="thread.messages"
@@ -36,6 +38,7 @@ import { useRoute } from 'vue-router'
 import { state, addMessage } from '@/stores/chat.js'
 import MessageList from '@/components/MessageList.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import StatusBanner from '@/components/StatusBanner.vue'
 
 const route = useRoute()
 const friend = computed(() =>

@@ -29,8 +29,8 @@
           borderless
           dense
           clearable
-          placeholder="Priatelia a servery"
-          aria-label="Hľadať priateľov a servery"
+          placeholder="Kanály, priatelia, servery"
+          aria-label="Hľadať kanály, priateľov a servery"
         >
           <template #prepend>
             <q-icon name="search" size="18px" />
@@ -38,6 +38,41 @@
         </q-input>
 
         <div v-if="signedIn" class="side-lists">
+          <!-- kanály, v ktorých som členom; pozvánky sú zvýraznené a navrchu -->
+          <q-expansion-item
+            v-model="channelsExpanded"
+            dense
+            label="Moje kanály"
+            header-class="side-title"
+          >
+            <router-link
+              v-for="c in filteredChannels"
+              :key="c.name"
+              :to="'/c/' + c.name"
+              class="side-channel"
+              :class="{
+                invite: c.invite,
+                active: route.params.name === c.name
+              }"
+              @click="selectServerOf(c)"
+            >
+              <q-icon
+                :name="c.invite ? 'mail' : c.private ? 'lock' : 'tag'"
+                size="16px"
+                aria-hidden="true"
+              />
+              <span>{{ c.name }}</span>
+              <span v-if="c.invite" class="chip">pozvánka</span>
+            </router-link>
+            <p v-if="!filteredChannels.length" class="side-empty">
+              {{
+                sidebarQuery
+                  ? 'Nenašli sa kanály'
+                  : 'Zatiaľ nie si v žiadnom kanáli'
+              }}
+            </p>
+          </q-expansion-item>
+
           <q-expansion-item
             v-model="friendsExpanded"
             dense
@@ -640,10 +675,23 @@ const chatStyle = computed(() => ({
   }[state.chatAppearance.font]
 }))
 const sidebarSearch = ref('')
+const channelsExpanded = ref(true)
 const friendsExpanded = ref(true)
 const serversExpanded = ref(true)
 
 const sidebarQuery = computed(() => normalizeSearch(sidebarSearch.value))
+// visibleChannels() bez servera = všetky moje kanály, pozvánky navrchu
+const filteredChannels = computed(() =>
+  visibleChannels().filter(channel =>
+    normalizeSearch(channel.name).includes(sidebarQuery.value)
+  )
+)
+
+// po kliknutí na kanál vyber aj jeho server, aby sedeli záložky hore
+function selectServerOf(channel) {
+  const server = state.servers.find(s => s.channels.includes(channel.name))
+  if (server) state.activeServer = server.name
+}
 const filteredFriends = computed(() =>
   state.friends.filter(friend =>
     normalizeSearch(
@@ -666,7 +714,8 @@ function normalizeSearch(value) {
 }
 
 watch(sidebarSearch, value => {
-  if (value.trim()) {
+  if (value?.trim()) {
+    channelsExpanded.value = true
     friendsExpanded.value = true
     serversExpanded.value = true
   }

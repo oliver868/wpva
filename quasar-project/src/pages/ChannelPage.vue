@@ -1,13 +1,52 @@
 <template>
   <q-page class="sheet" :style-fn="() => ({})">
-    <div v-if="!channel" class="empty">
-      <h2>#{{ $route.params.name }} neexistuje</h2>
+    <!-- kanál zanikol (zrušil ho správca alebo 30 dní bez správy) -->
+    <div v-if="!channel && closed" class="empty channel-access">
+      <q-icon name="history_toggle_off" size="44px" aria-hidden="true" />
+      <h2>Kanál #{{ closed.name }} zanikol</h2>
+      <p v-if="closed.reason === 'inactive'">
+        Viac ako 30 dní v ňom nepribudla žiadna správa, preto automaticky
+        zanikol ({{ closed.date }}). Jeho história už nie je dostupná.
+      </p>
+      <p v-else>
+        Zrušil ho správca @{{ closed.by }} ({{ closed.date }}). Jeho história už
+        nie je dostupná.
+      </p>
+      <p>Názov #{{ closed.name }} je znova voľný, môžeš založiť nový kanál.</p>
+      <q-btn
+        class="k-btn yellow"
+        unelevated
+        no-caps
+        :label="'Založiť nový #' + closed.name"
+        @click="send('/join ' + closed.name)"
+      />
+      <q-btn
+        class="k-btn"
+        unelevated
+        no-caps
+        label="Späť do prehľadu"
+        to="/home"
+      />
+    </div>
+
+    <!-- kanál nikdy neexistoval -->
+    <div v-else-if="!channel" class="empty channel-access">
+      <q-icon name="travel_explore" size="44px" aria-hidden="true" />
+      <h2>Kanál #{{ $route.params.name }} neexistuje</h2>
+      <p>Taký kanál zatiaľ nikto nevytvoril. Môžeš ho založiť ako prvý.</p>
       <q-btn
         class="k-btn yellow"
         unelevated
         no-caps
         :label="'Vytvoriť cez /join ' + $route.params.name"
         @click="send('/join ' + $route.params.name)"
+      />
+      <q-btn
+        class="k-btn"
+        unelevated
+        no-caps
+        label="Späť do prehľadu"
+        to="/home"
       />
     </div>
 
@@ -139,6 +178,8 @@
           @click="showMembers = !showMembers"
         />
       </header>
+
+      <StatusBanner />
 
       <div class="content">
         <MessageList
@@ -299,6 +340,7 @@ import { useQuasar } from 'quasar'
 import { state, findChannel, addMessage, runCommand } from '@/stores/chat.js'
 import MessageList from '@/components/MessageList.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import StatusBanner from '@/components/StatusBanner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -307,6 +349,9 @@ const confirmChannelExit = inject('confirmChannelExit')
 const updateChannelVisibility = inject('updateChannelVisibility')
 
 const channel = computed(() => findChannel(route.params.name))
+const closed = computed(() =>
+  state.closedChannels.find(item => item.name === route.params.name)
+)
 const input = ref('')
 const showMembers = ref(false)
 const showTyping = ref(false)
