@@ -14,10 +14,26 @@ const routes = [
     children: [
       { path: '', redirect: '/home' },
       { path: 'home', name: 'home', component: HomePage },
-      { path: 'c/:name', component: ChannelPage },
-      { path: 'c/:name/members', component: ChannelMembersPage },
-      { path: 'dm/:nick/:threadId?', component: DirectPage },
-      { path: 'settings', component: SettingsPage },
+      {
+        path: 'c/:name',
+        component: ChannelPage,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'c/:name/members',
+        component: ChannelMembersPage,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'dm/:nick/:threadId?',
+        component: DirectPage,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'settings',
+        component: SettingsPage,
+        meta: { requiresAuth: true }
+      },
       { path: 'login', component: LoginPage },
       { path: 'register', component: RegisterPage }
     ]

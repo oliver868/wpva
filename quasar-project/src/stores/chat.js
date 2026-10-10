@@ -50,10 +50,13 @@ export const state = reactive({
     }
   ],
 
-  // zaniknuté kanály – aby sa dali odlíšiť od kanálov, ktoré nikdy neexistovali
-  // reason: 'inactive' (30 dní bez správy) | 'deleted' (zrušil ho správca)
   closedChannels: [
-    { name: 'stary-projekt', reason: 'inactive', by: 'mara', date: '2. 10. 2026' }
+    {
+      name: 'stary-projekt',
+      reason: 'inactive',
+      by: 'mara',
+      date: '2. 10. 2026'
+    }
   ],
 
   users: {
@@ -69,7 +72,7 @@ export const state = reactive({
       name: 'hackathon',
       private: true,
       admin: 'mara',
-      invite: true,
+      invitations: [{ nick: 'dano', from: 'mara' }],
       members: ['mara', 'tomas'],
       banned: [],
       kicks: {},
@@ -218,6 +221,117 @@ export function findChannel(name) {
   return state.channels.find(channel => channel.name === name)
 }
 
+export function channelInvitation(channel, nick = state.me) {
+  if (!channel || !channel.invitations) {
+    return undefined
+  }
+  for (const invitation of channel.invitations) {
+    if (invitation.nick === nick) {
+      return invitation
+    }
+  }
+  return undefined
+}
+
+export function hasChannelInvitation(channel, nick = state.me) {
+  return channelInvitation(channel, nick) !== undefined
+}
+
+function removeChannelInvitation(channel, nick) {
+  const remainingInvitations = []
+  if (channel.invitations) {
+    for (const invitation of channel.invitations) {
+      if (invitation.nick !== nick) {
+        remainingInvitations.push(invitation)
+      }
+    }
+  }
+  channel.invitations = remainingInvitations
+}
+
+export function acceptChannelInvitation(channel) {
+  if (!channel || !state.channels.includes(channel)) {
+    return { message: 'Kanál už neexistuje.', success: false }
+  }
+  if (channel.banned.includes(state.me)) {
+    return { message: 'V tomto kanáli máš ban.', success: false }
+  }
+  if (!hasChannelInvitation(channel)) {
+    return { message: 'Do tohto kanála nemáš pozvánku.', success: false }
+  }
+
+  removeChannelInvitation(channel, state.me)
+  if (!channel.members.includes(state.me)) {
+    channel.members.push(state.me)
+  }
+  for (const server of state.servers) {
+    if (server.channels.includes(channel.name)) {
+      state.activeServer = server.name
+      break
+    }
+  }
+  return { message: `Prijal si pozvánku do #${channel.name}.`, success: true }
+}
+
+export function declineChannelInvitation(channel) {
+  if (!hasChannelInvitation(channel)) {
+    return { message: 'Do tohto kanála nemáš pozvánku.', success: false }
+  }
+  removeChannelInvitation(channel, state.me)
+  return { message: `Odmietol si pozvánku do #${channel.name}.`, success: true }
+}
+
+export function isServerMember(serverName) {
+  const server = findServer(serverName)
+  if (!server) {
+    return false
+  }
+  if (server.admin === state.me) {
+    return true
+  }
+  for (const name of server.channels) {
+    const channel = findChannel(name)
+    if (!channel || hasChannelInvitation(channel)) {
+      continue
+    }
+    if (
+      channel.members.includes(state.me) &&
+      !channel.banned.includes(state.me)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+export function joinedServers() {
+  const servers = []
+  for (const server of state.servers) {
+    if (isServerMember(server.name)) {
+      servers.push(server)
+    }
+  }
+  return servers
+}
+
+export function createServer(name) {
+  const serverName = name.trim()
+  if (!serverName || serverName.length > 60) {
+    return { message: 'Zadaj názov servera s najviac 60 znakmi.' }
+  }
+  for (const server of state.servers) {
+    if (
+      server.name.toLocaleLowerCase('sk') === serverName.toLocaleLowerCase('sk')
+    ) {
+      return { message: 'Server s týmto názvom už existuje. Vyber iný názov.' }
+    }
+  }
+
+  state.servers.push({ name: serverName, admin: state.me, channels: [] })
+  state.activeServer = serverName
+  return { message: `Server ${serverName} vytvorený.`, goTo: '/home' }
+}
+
 export function setChannelVisibility(name, isPrivate) {
   const channel = findChannel(name)
   if (!channel) {
@@ -262,7 +376,7 @@ export function visibleChannels(serverName) {
     if (channel.banned.includes(state.me)) {
       continue
     }
-    if (channel.invite) {
+    if (hasChannelInvitation(channel)) {
       invitedChannels.push(channel)
     } else if (channel.members.includes(state.me)) {
       joinedChannels.push(channel)
@@ -286,7 +400,7 @@ export function visibleServers() {
       if (!channel) {
         continue
       }
-      if (channel.invite) {
+      if (hasChannelInvitation(channel)) {
         invitedNames.push(name)
       } else {
         joinedNames.push(name)
@@ -294,7 +408,7 @@ export function visibleServers() {
     }
 
     const channelNames = invitedNames.concat(joinedNames)
-    if (channelNames.length === 0) {
+    if (channelNames.length === 0 && !isServerMember(server.name)) {
       continue
     }
 
@@ -324,15 +438,25 @@ export function createChannel(
       message: 'Názov kanála môže obsahovať iba malé písmená, čísla a pomlčky.'
     }
   }
-  if (findChannel(normalized))
+  if (findChannel(normalized)) {
     return { message: `Kanál #${normalized} už existuje.` }
+  }
   const server = findServer(serverName)
-  if (!server) return { message: 'Vyber platný server.' }
+  if (!server) {
+    return { message: 'Vyber platný server.' }
+  }
+  if (!isServerMember(server.name)) {
+    return {
+      message:
+        'Na tomto serveri nie si členom. Najprv sa pripoj do jeho kanála.'
+    }
+  }
 
   state.channels.push({
     name: normalized,
     private: isPrivate,
     admin: state.me,
+    invitations: [],
     members: [state.me],
     banned: [],
     kicks: {},
@@ -341,10 +465,13 @@ export function createChannel(
   })
   server.channels.push(normalized)
   state.activeServer = server.name
-  // názov zaniknutého kanála je znova voľný
-  state.closedChannels = state.closedChannels.filter(
-    closed => closed.name !== normalized
-  )
+  const closedChannels = []
+  for (const closedChannel of state.closedChannels) {
+    if (closedChannel.name !== normalized) {
+      closedChannels.push(closedChannel)
+    }
+  }
+  state.closedChannels = closedChannels
   return {
     message: `Kanál #${normalized} vytvorený v serveri ${server.name}.`,
     goTo: '/c/' + normalized
@@ -360,7 +487,7 @@ export function addMessage(messages, text) {
 }
 
 export function runCommand(text, channel) {
-  const parts = text.trim().split(' ')
+  const parts = text.trim().split(/\s+/)
   const command = parts[0]
   const name = parts[1]
   const option = parts[2]
@@ -376,6 +503,18 @@ export function runCommand(text, channel) {
     }
     if (existing.banned.includes(me)) {
       return { message: 'V tomto kanáli máš ban' }
+    }
+    if (hasChannelInvitation(existing)) {
+      for (const server of state.servers) {
+        if (server.channels.includes(existing.name)) {
+          state.activeServer = server.name
+          break
+        }
+      }
+      return {
+        message: 'Najprv prijmi alebo odmietni pozvánku do tohto kanála.',
+        goTo: '/c/' + name
+      }
     }
     if (
       existing.private &&
@@ -401,22 +540,116 @@ export function runCommand(text, channel) {
   }
 
   if (command === '/invite') {
+    if (!channel || !state.channels.includes(channel)) {
+      return { message: 'Príkaz /invite použi v existujúcom kanáli.' }
+    }
+    if (
+      !channel.members.includes(me) ||
+      channel.banned.includes(me) ||
+      hasChannelInvitation(channel)
+    ) {
+      return { message: 'Pozývať môže iba člen tohto kanála.' }
+    }
     if (channel.private && channel.admin !== me) {
       return { message: 'Do súkromného kanála pozýva iba správca' }
     }
-    channel.banned = channel.banned.filter(nick => nick !== name)
-    if (!channel.members.includes(name)) {
-      channel.members.push(name)
+    let nickname = ''
+    if (name) {
+      nickname = name.replace(/^@/, '')
     }
-    return { message: `@${name} je v kanáli` }
+    if (!nickname || parts.length !== 2) {
+      return { message: 'Použi /invite nick.' }
+    }
+    let nick = ''
+    for (const userNick of Object.keys(state.users)) {
+      if (
+        userNick.toLocaleLowerCase('sk') === nickname.toLocaleLowerCase('sk')
+      ) {
+        nick = userNick
+        break
+      }
+    }
+    if (!nick) {
+      return { message: `Používateľ @${nickname} neexistuje.` }
+    }
+    if (channel.members.includes(nick)) {
+      return { message: `@${nick} už je členom tohto kanála.` }
+    }
+    if (hasChannelInvitation(channel, nick)) {
+      return { message: `@${nick} už má pozvánku do tohto kanála.` }
+    }
+    if (channel.banned.includes(nick) && channel.admin !== me) {
+      return {
+        message: 'Prístup zablokovanému používateľovi môže obnoviť iba správca.'
+      }
+    }
+    const bannedMembers = []
+    for (const bannedNick of channel.banned) {
+      if (bannedNick !== nick) {
+        bannedMembers.push(bannedNick)
+      }
+    }
+    channel.banned = bannedMembers
+    delete channel.kicks[nick]
+    if (channel.invitations === undefined || channel.invitations === null) {
+      channel.invitations = []
+    }
+    channel.invitations.push({ nick, from: me })
+    return {
+      message: `Pozvánka pre @${nick} do #${channel.name} bola odoslaná.`
+    }
   }
 
   if (command === '/revoke') {
+    if (!channel) {
+      return { message: 'Príkaz /revoke použi v súkromnom kanáli.' }
+    }
     if (channel.admin !== me) {
       return { message: 'Odoberať môže iba správca' }
     }
-    channel.members = channel.members.filter(nick => nick !== name)
-    return { message: `@${name} odobratý` }
+    if (
+      !channel.members.includes(me) ||
+      channel.banned.includes(me) ||
+      hasChannelInvitation(channel)
+    ) {
+      return { message: 'Najprv sa pripoj do tohto kanála.' }
+    }
+    if (!channel.private) {
+      return { message: 'Vo verejnom kanáli použi /kick nick.' }
+    }
+    let nickname = ''
+    if (name) {
+      nickname = name.replace(/^@/, '')
+    }
+    if (!nickname || parts.length !== 2) {
+      return { message: 'Použi /revoke nick.' }
+    }
+    let member = ''
+    for (const memberNick of channel.members) {
+      if (
+        memberNick.toLocaleLowerCase('sk') === nickname.toLocaleLowerCase('sk')
+      ) {
+        member = memberNick
+        break
+      }
+    }
+    if (!member) {
+      return { message: `@${nickname} nie je členom tohto kanála.` }
+    }
+    if (member === channel.admin) {
+      return {
+        message: 'Správcu nemožno odobrať. Na zrušenie kanála použi /quit.'
+      }
+    }
+    const remainingMembers = []
+    for (const nick of channel.members) {
+      if (nick !== member) {
+        remainingMembers.push(nick)
+      }
+    }
+    channel.members = remainingMembers
+    delete channel.kicks[member]
+    return { message: `@${member} už nemá prístup do #${channel.name}.` }
   }
 
   if (command === '/kick') {
@@ -427,6 +660,7 @@ export function runCommand(text, channel) {
 
     if (channel.admin === me || channel.kicks[name] >= 3) {
       channel.members = channel.members.filter(nick => nick !== name)
+      removeChannelInvitation(channel, name)
       channel.banned.push(name)
       return { message: `@${name} má trvalý ban` }
     }
@@ -454,7 +688,7 @@ export function runCommand(text, channel) {
       return { message: `Kanál #${channel.name} zrušený`, goTo: '/' }
     }
     channel.members = channel.members.filter(nick => nick !== me)
-    channel.invite = false
+    removeChannelInvitation(channel, me)
     return { message: `Opustil si #${channel.name}`, goTo: '/' }
   }
 

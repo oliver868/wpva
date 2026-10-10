@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="lHh LpR lFf">
+  <q-layout view="lHh LpR lFf" style="min-height: 100dvh">
     <q-drawer v-model="drawer" show-if-above :width="310">
       <div class="side">
         <router-link class="logo" to="/">
@@ -21,6 +21,15 @@
           label="Vytvoriť kanál"
           @click="openCreate()"
         />
+        <q-btn
+          v-if="signedIn"
+          class="k-btn"
+          unelevated
+          no-caps
+          icon="dns"
+          label="Vytvoriť server"
+          @click="openCreateServer()"
+        />
 
         <q-input
           v-if="signedIn"
@@ -38,7 +47,6 @@
         </q-input>
 
         <div v-if="signedIn" class="side-lists">
-          <!-- kanály, v ktorých som členom; pozvánky sú zvýraznené a navrchu -->
           <q-expansion-item
             v-model="channelsExpanded"
             dense
@@ -51,18 +59,14 @@
               :to="'/c/' + c.name"
               class="side-channel"
               :class="{
-                invite: c.invite,
+                invite: hasChannelInvitation(c),
                 active: route.params.name === c.name
               }"
               @click="selectServerOf(c)"
             >
-              <q-icon
-                :name="c.invite ? 'mail' : c.private ? 'lock' : 'tag'"
-                size="16px"
-                aria-hidden="true"
-              />
+              <q-icon :name="channelIcon(c)" size="16px" aria-hidden="true" />
               <span>{{ c.name }}</span>
-              <span v-if="c.invite" class="chip">pozvánka</span>
+              <span v-if="hasChannelInvitation(c)" class="chip">pozvánka</span>
             </router-link>
             <p v-if="!filteredChannels.length" class="side-empty">
               {{
@@ -196,6 +200,7 @@
                   clickable
                   v-close-popup
                   to="/login"
+                  replace
                   @click="signedIn = false"
                 >
                   <q-item-section avatar
@@ -255,16 +260,18 @@
                 :key="c.name"
                 :to="'/c/' + c.name"
                 class="tab"
-                :class="{ invite: c.invite }"
+                :class="{ invite: hasChannelInvitation(c) }"
                 :aria-label="
-                  c.invite ? `#${c.name} – pozvánka do kanála` : undefined
+                  hasChannelInvitation(c)
+                    ? `#${c.name} – pozvánka do kanála`
+                    : undefined
                 "
               >
                 <q-icon v-if="c.private" name="lock" size="14px" />
                 <span v-else>#</span>
                 {{ c.name }}
                 <q-icon
-                  v-if="c.invite"
+                  v-if="hasChannelInvitation(c)"
                   name="mail_outline"
                   size="14px"
                   aria-hidden="true"
@@ -444,7 +451,10 @@
         </div>
 
         <div class="chat-view" :style="chatStyle">
-          <router-view v-if="signedIn || isAuthPage" />
+          <router-view
+            v-if="signedIn || isAuthPage"
+            :key="route.path + ':' + signedIn"
+          />
           <q-page v-else class="sheet empty" :style-fn="() => ({})">
             <q-icon name="account_circle" size="48px" aria-hidden="true" />
             <h1>Vitaj v Kanáloch</h1>
@@ -513,36 +523,88 @@
       <q-card class="dialog">
         <q-form class="dialog-form" @submit.prevent="submitChannel">
           <h2>Nový kanál</h2>
+          <template v-if="channelServerOptions.length">
+            <q-input
+              v-model="newName"
+              class="k-input"
+              borderless
+              dense
+              prefix="#"
+              label="Názov kanála"
+              placeholder="nazov-kanala"
+              :rules="[validateChannelName]"
+            />
+            <q-select
+              v-model="newServer"
+              class="k-input"
+              borderless
+              dense
+              label="Server"
+              :options="channelServerOptions"
+              :rules="[validateChannelServer]"
+            />
+            <q-toggle
+              v-model="newPrivate"
+              label="Súkromný kanál"
+              color="positive"
+            />
+            <p class="hint"
+              >Kanál sa vytvorí na vybranom serveri. V chate ho môžeš vytvoriť
+              aj príkazom /join.</p
+            >
+          </template>
+          <template v-else>
+            <p class="hint"
+              >Zatiaľ nie si členom žiadneho servera. Vytvor si vlastný alebo
+              prijmi pozvánku do kanála.</p
+            >
+            <q-btn
+              class="k-btn yellow"
+              unelevated
+              no-caps
+              icon="dns"
+              label="Vytvoriť server"
+              @click="openCreateServer()"
+            />
+          </template>
+          <div class="row justify-end q-gutter-sm">
+            <q-btn
+              v-close-popup
+              class="k-btn"
+              unelevated
+              no-caps
+              label="Zrušiť"
+            />
+            <q-btn
+              v-if="channelServerOptions.length"
+              class="k-btn dark"
+              unelevated
+              no-caps
+              type="submit"
+              label="Vytvoriť"
+            />
+          </div>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showServerDialog">
+      <q-card class="dialog">
+        <q-form class="dialog-form" @submit.prevent="submitServer">
+          <h2>Nový server</h2>
           <q-input
-            v-model="newName"
+            v-model="newServerName"
             class="k-input"
             borderless
             dense
-            prefix="#"
-            label="Názov kanála"
-            placeholder="nazov-kanala"
-            :rules="[
-              v =>
-                /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v?.trim()) ||
-                'Použi malé písmená, čísla a pomlčky'
-            ]"
-          />
-          <q-select
-            v-model="newServer"
-            class="k-input"
-            borderless
-            dense
-            label="Server"
-            :options="state.servers.map(server => server.name)"
-          />
-          <q-toggle
-            v-model="newPrivate"
-            label="Súkromný kanál"
-            color="positive"
+            autofocus
+            maxlength="60"
+            label="Názov servera"
+            :rules="[validateServerName]"
           />
           <p class="hint"
-            >Kanál sa vytvorí na vybranom serveri. V chate ho môžeš vytvoriť aj
-            príkazom /join.</p
+            >Server sa pridá do tvojho zoznamu. Potom v ňom môžeš vytvoriť
+            kanály.</p
           >
           <div class="row justify-end q-gutter-sm">
             <q-btn
@@ -557,7 +619,7 @@
               unelevated
               no-caps
               type="submit"
-              label="Vytvoriť"
+              label="Vytvoriť server"
             />
           </div>
         </q-form>
@@ -611,10 +673,13 @@ import { useQuasar } from 'quasar'
 import {
   state,
   findChannel,
+  hasChannelInvitation,
   visibleChannels,
   visibleServers,
+  joinedServers,
   runCommand,
   createChannel,
+  createServer,
   setChannelVisibility
 } from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -634,6 +699,15 @@ watch(
 
 const drawer = ref(false)
 const showCreate = ref(false)
+const showServerDialog = ref(false)
+const newServerName = ref('')
+const channelServerOptions = computed(() => {
+  const names = []
+  for (const server of joinedServers()) {
+    names.push(server.name)
+  }
+  return names
+})
 const showThreadDialog = ref(false)
 const pendingExit = ref(null)
 const pendingExitDeletesChannel = computed(() => {
@@ -680,14 +754,12 @@ const friendsExpanded = ref(true)
 const serversExpanded = ref(true)
 
 const sidebarQuery = computed(() => normalizeSearch(sidebarSearch.value))
-// visibleChannels() bez servera = všetky moje kanály, pozvánky navrchu
 const filteredChannels = computed(() =>
   visibleChannels().filter(channel =>
     normalizeSearch(channel.name).includes(sidebarQuery.value)
   )
 )
 
-// po kliknutí na kanál vyber aj jeho server, aby sedeli záložky hore
 function selectServerOf(channel) {
   const server = state.servers.find(s => s.channels.includes(channel.name))
   if (server) state.activeServer = server.name
@@ -722,11 +794,24 @@ watch(sidebarSearch, value => {
 })
 
 const tabs = computed(() => visibleChannels(state.activeServer))
-const invitedChannel = computed(() =>
-  tabs.value.find(
-    channel => channel.name === route.params.name && channel.invite
-  )
-)
+const invitedChannel = computed(() => {
+  for (const channel of tabs.value) {
+    if (channel.name === route.params.name && hasChannelInvitation(channel)) {
+      return channel
+    }
+  }
+  return undefined
+})
+
+function channelIcon(channel) {
+  if (hasChannelInvitation(channel)) {
+    return 'mail'
+  }
+  if (channel.private) {
+    return 'lock'
+  }
+  return 'tag'
+}
 
 const channel = computed(() => {
   const currentChannel = findChannel(route.params.name)
@@ -790,11 +875,63 @@ function submitChannelExit() {
   if (result.goTo) router.push(result.goTo)
 }
 
+function validateChannelName(value) {
+  let name = undefined
+  if (value !== undefined && value !== null) {
+    name = value.trim()
+  }
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
+    return true
+  }
+  return 'Použi malé písmená, čísla a pomlčky'
+}
+
+function validateChannelServer(value) {
+  if (channelServerOptions.value.includes(value)) {
+    return true
+  }
+  return 'Vyber svoj server'
+}
+
+function validateServerName(value) {
+  if (value !== undefined && value !== null && value.trim()) {
+    return true
+  }
+  return 'Zadaj názov servera'
+}
+
 function openCreate(serverName = state.activeServer) {
-  newServer.value = serverName
+  newServer.value = ''
+  if (channelServerOptions.value.includes(serverName)) {
+    newServer.value = serverName
+  } else if (channelServerOptions.value.length > 0) {
+    newServer.value = channelServerOptions.value[0]
+  }
   showCreate.value = true
 }
 provide('openCreateChannel', openCreate)
+
+function openCreateServer() {
+  showCreate.value = false
+  newServerName.value = ''
+  showServerDialog.value = true
+}
+provide('openCreateServer', openCreateServer)
+
+function submitServer() {
+  const result = createServer(newServerName.value)
+  $q.notify(result.message)
+  if (!result.goTo) {
+    return
+  }
+  showServerDialog.value = false
+  if ($q.screen.lt.md) {
+    drawer.value = false
+  }
+  serversExpanded.value = true
+  sidebarSearch.value = ''
+  router.push(result.goTo)
+}
 
 function submitChannel() {
   const result = createChannel(newName.value, newPrivate.value, newServer.value)

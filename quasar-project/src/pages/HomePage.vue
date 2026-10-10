@@ -68,8 +68,8 @@
               dense
               no-caps
               icon="add"
-              label="Vytvoriť kanál"
-              @click="openCreate()"
+              label="Vytvoriť server"
+              @click="openCreateServer()"
             />
           </header>
 
@@ -97,6 +97,7 @@
                   {{ channelWord(server.channels.length) }}
                 </span>
                 <q-btn
+                  v-if="isServerMember(server.name)"
                   flat
                   dense
                   round
@@ -111,9 +112,9 @@
                   v-for="channel in server.channels"
                   :key="channel.name"
                   class="home-channel"
-                  :class="{ invite: channel.invite }"
+                  :class="{ invite: hasChannelInvitation(channel) }"
                   :aria-label="
-                    channel.invite
+                    hasChannelInvitation(channel)
                       ? `#${channel.name} – pozvánka do kanála`
                       : undefined
                   "
@@ -127,7 +128,7 @@
                   />
                   {{ channel.name }}
                   <q-icon
-                    v-if="channel.invite"
+                    v-if="hasChannelInvitation(channel)"
                     name="mail"
                     size="13px"
                     aria-label="Pozvánka"
@@ -195,13 +196,17 @@ import { useRouter } from 'vue-router'
 import {
   state,
   findChannel,
+  channelInvitation,
+  hasChannelInvitation,
   visibleChannels,
-  visibleServers
+  visibleServers,
+  isServerMember
 } from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const router = useRouter()
 const openCreate = inject('openCreateChannel')
+const openCreateServer = inject('openCreateServer')
 
 const serverGroups = computed(() => {
   const groups = []
@@ -221,21 +226,33 @@ const serverGroups = computed(() => {
   }
   return groups
 })
-const invitations = computed(() =>
-  visibleChannels().filter(channel => channel.invite)
-)
-const notifications = computed(() => [
-  ...invitations.value.map(channel => ({
-    id: `invite-${channel.name}`,
-    title: `Pozvánka do #${channel.name}`,
-    detail: `@${channel.admin} ťa pozýva do kanála.`,
-    to: `/c/${channel.name}`,
-    invitation: true,
-    read: false,
-    server: serverFor(channel)
-  })),
-  ...state.notificationFeed
-])
+const invitations = computed(() => {
+  const invitedChannels = []
+  for (const channel of visibleChannels()) {
+    if (hasChannelInvitation(channel)) {
+      invitedChannels.push(channel)
+    }
+  }
+  return invitedChannels
+})
+const notifications = computed(() => {
+  const items = []
+  for (const channel of invitations.value) {
+    items.push({
+      id: `invite-${channel.name}`,
+      title: `Pozvánka do #${channel.name}`,
+      detail: `@${channelInvitation(channel).from} ťa pozýva do kanála.`,
+      to: `/c/${channel.name}`,
+      invitation: true,
+      read: false,
+      server: serverFor(channel)
+    })
+  }
+  for (const notification of state.notificationFeed) {
+    items.push(notification)
+  }
+  return items
+})
 const unreadCount = computed(
   () => notifications.value.filter(item => !item.read).length
 )
@@ -246,14 +263,27 @@ const onlineFriends = computed(
     ).length
 )
 const continueChannel = computed(() => {
-  const channel =
-    state.channels.find(
-      item => item.name === 'general' && item.members.includes(state.me)
-    ) ||
-    state.channels.find(item => !item.invite && item.members.includes(state.me))
+  let channel = null
+  for (const item of state.channels) {
+    if (item.name === 'general' && item.members.includes(state.me)) {
+      channel = item
+      break
+    }
+  }
+  if (!channel) {
+    for (const item of state.channels) {
+      if (!hasChannelInvitation(item) && item.members.includes(state.me)) {
+        channel = item
+        break
+      }
+    }
+  }
+  if (!channel) {
+    return { name: '', server: null }
+  }
   return {
-    name: channel?.name || '',
-    server: channel ? serverFor(channel) : null
+    name: channel.name,
+    server: serverFor(channel)
   }
 })
 

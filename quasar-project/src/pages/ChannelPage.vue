@@ -1,6 +1,5 @@
 <template>
   <q-page class="sheet" :style-fn="() => ({})">
-    <!-- kanál zanikol (zrušil ho správca alebo 30 dní bez správy) -->
     <div v-if="!channel && closed" class="empty channel-access">
       <q-icon name="history_toggle_off" size="44px" aria-hidden="true" />
       <h2>Kanál #{{ closed.name }} zanikol</h2>
@@ -29,7 +28,6 @@
       />
     </div>
 
-    <!-- kanál nikdy neexistoval -->
     <div v-else-if="!channel" class="empty channel-access">
       <q-icon name="travel_explore" size="44px" aria-hidden="true" />
       <h2>Kanál #{{ $route.params.name }} neexistuje</h2>
@@ -71,11 +69,11 @@
       />
     </div>
 
-    <div v-else-if="channel.invite" class="empty">
+    <div v-else-if="hasChannelInvitation(channel)" class="empty">
       <div class="ticket">
         <q-icon name="mail_outline" size="40px" aria-hidden="true" />
         <p
-          >@{{ channel.admin }} ťa pozýva do
+          >@{{ channelInvitation(channel).from }} ťa pozýva do
           {{ channel.private ? 'súkromného' : 'verejného' }} kanála</p
         >
         <h2>#{{ channel.name }}</h2>
@@ -189,8 +187,8 @@
         />
 
         <aside v-if="showMembers" class="members">
-          <h3>Členovia ({{ channel.members.length }})</h3>
-          <div v-for="nick in channel.members" :key="nick" class="member">
+          <h3>Členovia ({{ channelMembers.length }})</h3>
+          <div v-for="nick in channelMembers" :key="nick" class="member">
             <UserAvatar :nick="nick" small />
             <b>{{ nick }}</b>
             <span v-if="nick === channel.admin" class="chip">správca</span>
@@ -198,99 +196,36 @@
         </aside>
       </div>
 
-      <footer class="composer">
-        <div class="composer-tools">
-          <div v-if="channel.typing">
-            <button class="chip" @click="showTyping = !showTyping">
-              {{ channel.typing.nick }} píše…
-            </button>
-            <p v-if="showTyping" class="typing-text">{{
-              channel.typing.text
-            }}</p>
-          </div>
-          <q-btn
-            flat
-            dense
-            no-caps
-            icon="help_outline"
-            label="Príkazy"
-            class="command-help-trigger"
-          >
-            <q-menu anchor="top right" self="bottom right" :offset="[0, 8]">
-              <section
-                class="command-help"
-                aria-labelledby="command-help-title"
-              >
-                <h2 id="command-help-title">Ako písať do chatu</h2>
-                <p
-                  >Správu napíš bežne. Príkaz začína znakom / a odošleš ho
-                  rovnako ako správu.</p
-                >
-                <dl>
-                  <div v-for="command in availableCommands" :key="command.name">
-                    <dt
-                      ><code>{{ command.usage }}</code></dt
-                    >
-                    <dd>{{ command.description }}</dd>
-                  </div>
-                  <div
-                    ><dt><code>@nick text správy</code></dt
-                    ><dd
-                      >Adresuje správu používateľovi a zvýrazní mu ju.</dd
-                    ></div
-                  >
-                </dl>
-                <p class="hint"
-                  >Napríklad: <code>/join studovna</code> alebo
-                  <code>@mara Ahoj!</code></p
-                >
-              </section>
-            </q-menu>
-          </q-btn>
+      <footer
+        class="composer channel-composer"
+        @focusin="composerFocused = true"
+        @focusout="
+          composerFocused = $event.currentTarget.contains($event.relatedTarget)
+        "
+      >
+        <div v-if="channel.typing">
+          <button class="chip" @click="showTyping = !showTyping">
+            {{ channel.typing.nick }} píše…
+          </button>
+          <p v-if="showTyping" class="typing-text">{{ channel.typing.text }}</p>
         </div>
 
         <section
-          v-if="showCommands"
+          v-if="showCommands && matchingCommands.length"
+          id="command-suggestions"
           class="command-suggestions"
-          aria-label="Nápoveda príkazov"
+          aria-label="Príkazy"
         >
-          <div class="command-suggestions-heading">
-            <b>Dostupné príkazy</b>
-            <span id="command-suggestions-hint" class="inline-details">
-              <span>↑ ↓ výber</span>
-              <span>Tab doplní</span>
-              <span>Esc zavrie</span>
-            </span>
-          </div>
-          <div
-            v-if="matchingCommands.length"
-            id="command-suggestions"
-            role="listbox"
-            aria-label="Dostupné príkazy"
-            class="command-suggestions-list"
+          <button
+            v-for="command in matchingCommands"
+            :key="command.name"
+            type="button"
+            class="command-suggestion"
+            @click="completeCommand(command)"
           >
-            <button
-              v-for="(command, index) in matchingCommands"
-              :id="'command-option-' + index"
-              :key="command.name"
-              type="button"
-              role="option"
-              tabindex="-1"
-              :aria-selected="activeCommand === index"
-              :class="[
-                'command-suggestion',
-                { 'is-active': activeCommand === index }
-              ]"
-              @pointerdown.prevent
-              @click="completeCommand(command)"
-            >
-              <code>{{ command.usage }}</code>
-              <span>{{ command.description }}</span>
-            </button>
-          </div>
-          <p v-else role="status" class="command-suggestions-empty"
-            >Tento príkaz nepoznáme. Napíš / a vyber si zo zoznamu.</p
-          >
+            <code>{{ command.usage }}</code>
+            <span>{{ command.description }}</span>
+          </button>
         </section>
 
         <form class="command-line" @submit.prevent="send(input)">
@@ -304,27 +239,13 @@
             v-model="input"
             :placeholder="'Napíš správu do #' + channel.name"
             aria-label="Správa alebo príkaz"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-haspopup="listbox"
-            :aria-expanded="showCommands && matchingCommands.length > 0"
             :aria-controls="
               showCommands && matchingCommands.length
                 ? 'command-suggestions'
                 : undefined
             "
-            :aria-activedescendant="
-              showCommands && matchingCommands.length
-                ? 'command-option-' + activeCommand
-                : undefined
-            "
-            :aria-describedby="
-              showCommands ? 'command-suggestions-hint' : undefined
-            "
             autocomplete="off"
-            @focus="inputFocused = true"
-            @blur="inputFocused = false"
-            @keydown="handleCommandKey"
+            @keydown.esc="commandsDismissed = true"
           />
           <button>POSLAŤ</button>
         </form>
@@ -334,10 +255,19 @@
 </template>
 
 <script setup>
-import { computed, inject, nextTick, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { state, findChannel, addMessage, runCommand } from '@/stores/chat.js'
+import {
+  state,
+  findChannel,
+  addMessage,
+  runCommand,
+  channelInvitation,
+  hasChannelInvitation,
+  acceptChannelInvitation,
+  declineChannelInvitation
+} from '@/stores/chat.js'
 import MessageList from '@/components/MessageList.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import StatusBanner from '@/components/StatusBanner.vue'
@@ -349,16 +279,27 @@ const confirmChannelExit = inject('confirmChannelExit')
 const updateChannelVisibility = inject('updateChannelVisibility')
 
 const channel = computed(() => findChannel(route.params.name))
+const channelMembers = computed(() => {
+  if (!channel.value) {
+    return []
+  }
+  const members = [channel.value.admin]
+  for (const nick of channel.value.members) {
+    if (!members.includes(nick)) {
+      members.push(nick)
+    }
+  }
+  return members
+})
 const closed = computed(() =>
   state.closedChannels.find(item => item.name === route.params.name)
 )
 const input = ref('')
-const showMembers = ref(false)
+const showMembers = ref(true)
 const showTyping = ref(false)
 const composerInput = ref(null)
-const inputFocused = ref(false)
+const composerFocused = ref(false)
 const commandsDismissed = ref(false)
-const activeCommand = ref(0)
 
 const availableCommands = computed(() => {
   const isAdmin = channel.value?.admin === state.me
@@ -414,18 +355,23 @@ const availableCommands = computed(() => {
       available: isAdmin
     }
   ]
-  return commands.filter(command => command.available !== false)
+  return commands
 })
 const matchingCommands = computed(() => {
   const prefix = input.value.split(/\s/)[0]
-  return availableCommands.value.filter(command =>
-    command.name.startsWith(prefix)
-  )
+  const matches = []
+  for (const command of availableCommands.value) {
+    if (command.name.startsWith(prefix)) {
+      matches.push(command)
+    }
+  }
+  return matches
 })
 const showCommands = computed(
   () =>
-    inputFocused.value &&
+    composerFocused.value &&
     input.value.startsWith('/') &&
+    !/\s/.test(input.value) &&
     !commandsDismissed.value
 )
 
@@ -433,7 +379,6 @@ watch(
   input,
   () => {
     commandsDismissed.value = false
-    activeCommand.value = 0
   },
   { flush: 'sync' }
 )
@@ -442,7 +387,6 @@ watch(
   () => {
     input.value = ''
     commandsDismissed.value = false
-    activeCommand.value = 0
   }
 )
 
@@ -457,60 +401,11 @@ function completeCommand(command) {
   }
 }
 
-function handleCommandKey(event) {
-  if (!showCommands.value || event.isComposing) {
-    return
-  }
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    commandsDismissed.value = true
-    return
-  }
-  const commandCount = matchingCommands.value.length
-  if (commandCount === 0) {
-    return
-  }
-
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    event.preventDefault()
-    if (event.key === 'ArrowDown') {
-      activeCommand.value += 1
-    } else {
-      activeCommand.value -= 1
-    }
-    if (activeCommand.value >= commandCount) {
-      activeCommand.value = 0
-    } else if (activeCommand.value < 0) {
-      activeCommand.value = commandCount - 1
-    }
-
-    nextTick(() => {
-      const optionId = 'command-option-' + activeCommand.value
-      const option = document.getElementById(optionId)
-      if (option) {
-        option.scrollIntoView({ block: 'nearest' })
-      }
-    })
-    return
-  }
-
-  const pressedTab = event.key === 'Tab' && !event.shiftKey
-  const pressedEnter = event.key === 'Enter'
-  const hasArguments = /\s/.test(input.value)
-
-  if ((pressedTab || pressedEnter) && !hasArguments) {
-    const command = matchingCommands.value[activeCommand.value]
-    if (pressedEnter && input.value === command.name) {
-      return
-    }
-    event.preventDefault()
-    completeCommand(command)
-  }
-}
-
 function send(text) {
   input.value = ''
-  if (!text.trim()) return
+  if (!text.trim()) {
+    return
+  }
 
   if (!text.startsWith('/')) {
     addMessage(channel.value.messages, text)
@@ -525,18 +420,25 @@ function send(text) {
 
   const result = runCommand(text, channel.value)
   $q.notify(result.message)
-  if (result.goTo) router.push(result.goTo)
-  if (text === '/list') showMembers.value = true
+  if (result.goTo) {
+    router.push(result.goTo)
+  }
+  if (text === '/list') {
+    showMembers.value = true
+  }
 }
 
 function accept() {
-  channel.value.invite = false
-  channel.value.members.push(state.me)
+  const result = acceptChannelInvitation(channel.value)
+  $q.notify(result.message)
 }
 
 function decline() {
-  channel.value.invite = false
-  router.push('/')
+  const result = declineChannelInvitation(channel.value)
+  $q.notify(result.message)
+  if (result.success) {
+    router.push('/home')
+  }
 }
 </script>
 
@@ -548,71 +450,23 @@ function decline() {
 .channel-access p {
   max-width: 55ch;
 }
-.composer-tools {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-.command-help-trigger {
-  margin-left: auto;
-  flex: none;
-}
-.command-help {
-  width: 420px;
-  max-width: calc(100vw - 32px);
-  max-height: 65vh;
-  overflow-y: auto;
-  padding: 20px;
-  background: var(--tint);
-  color: var(--ink);
-}
-.command-help h2 {
-  font-size: 18px;
-}
-.command-help p {
-  margin: 12px 0;
-}
-.command-help dl {
-  margin: 0;
-}
-.command-help dl > div {
-  padding: 12px 0;
-  border-top: 1px solid var(--lav);
-}
-.command-help dt {
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-.command-help dd {
-  margin: 4px 0 0;
-}
-.command-help code {
-  font-size: 13px;
+.channel-composer {
+  position: relative;
 }
 .command-suggestions {
+  position: absolute;
+  z-index: 1;
+  bottom: calc(100% + 8px);
+  left: 14px;
+  width: 360px;
+  max-width: calc(100% - 28px);
+  max-height: min(320px, 45dvh);
   min-width: 0;
-  overflow: hidden;
+  overflow-y: auto;
   background: var(--tint);
   color: var(--ink);
   border: var(--border);
   border-radius: 12px;
-}
-.command-suggestions-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--ink);
-}
-.command-suggestions-heading span {
-  font-size: 12px;
-}
-.command-suggestions-list {
-  max-height: min(320px, 32dvh);
-  overflow-y: auto;
 }
 .command-suggestion {
   display: grid;
@@ -627,11 +481,7 @@ function decline() {
   border: 0;
   cursor: pointer;
 }
-.command-suggestion + .command-suggestion {
-  border-top: 1px solid var(--lav);
-}
-.command-suggestion:hover,
-.command-suggestion.is-active {
+.command-suggestion:hover {
   background: var(--lav);
 }
 .command-suggestion:focus-visible {
@@ -643,12 +493,8 @@ function decline() {
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-.command-suggestion span,
-.command-suggestions-empty {
+.command-suggestion span {
   font-size: 13px;
-}
-.command-suggestions-empty {
-  margin: 0;
-  padding: 12px;
+  line-height: 1.4;
 }
 </style>

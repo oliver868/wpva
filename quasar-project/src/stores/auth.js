@@ -12,13 +12,6 @@ function normalize(value) {
 }
 
 function captureContext() {
-  const invitations = []
-  for (const channel of state.channels) {
-    if (channel.invite) {
-      invitations.push(channel.name)
-    }
-  }
-
   return {
     values: {
       profile: state.profile,
@@ -28,8 +21,7 @@ function captureContext() {
       onlyMentions: state.onlyMentions,
       chatAppearance: state.chatAppearance,
       activeServer: state.activeServer
-    },
-    invitations: invitations
+    }
   }
 }
 
@@ -51,9 +43,6 @@ function activateAccount(account) {
   state.activeServer = savedValues.activeServer
   state.me = account.nick
 
-  for (const channel of state.channels) {
-    channel.invite = account.context.invitations.includes(channel.name)
-  }
   signedIn.value = true
 }
 
@@ -91,11 +80,6 @@ export function registerUser(user) {
     return 'Tento email už má účet. Prihlás sa alebo použi iný email.'
   }
 
-  let activeServer = ''
-  if (state.servers.length > 0) {
-    activeServer = state.servers[0].name
-  }
-
   const account = {
     nick: nick,
     password: user.password,
@@ -111,9 +95,8 @@ export function registerUser(user) {
         notifications: true,
         onlyMentions: true,
         chatAppearance: { color: 'lav', font: 'figtree' },
-        activeServer: activeServer
-      },
-      invitations: []
+        activeServer: ''
+      }
     }
   }
   state.users = {

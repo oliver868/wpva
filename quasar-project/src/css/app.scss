@@ -307,7 +307,7 @@ button.chip {
   margin: 0 0 4px;
   color: var(--muted);
 }
-.auth-sheet {
+.sheet.auth-sheet {
   overflow-y: auto;
 }
 .auth-error {
@@ -334,6 +334,7 @@ button.chip {
   outline-offset: 3px;
 }
 .auth.auth-in-app {
+  flex-shrink: 0;
   min-height: 100%;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -391,21 +392,27 @@ button.chip {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
   padding: 16px 16px 16px 0;
 }
 .mobile-bar {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 10px;
 }
 
 .top-row {
   display: flex;
+  flex: none;
   align-items: flex-end;
   gap: 8px;
 }
 .top-actions {
   display: flex;
+  flex: none;
   gap: 4px;
 }
 
@@ -434,6 +441,7 @@ button.chip {
   gap: 4px;
   padding-top: 12px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 .tab {
@@ -485,6 +493,7 @@ button.chip {
 }
 .sheet-header {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
@@ -749,7 +758,9 @@ button.chip {
 
 .messages {
   flex: 1;
+  min-width: 0;
   min-height: 0;
+  overscroll-behavior-y: contain;
   padding: 18px;
 }
 .message {
@@ -873,6 +884,7 @@ button.chip {
 
 .composer {
   display: grid;
+  flex: none;
   gap: 8px;
   padding: 10px 14px 14px;
   background: #e6e0ff;
@@ -1059,12 +1071,9 @@ button.chip {
     margin-left: 0;
   }
   .top-row {
-    flex-wrap: wrap;
-    align-items: stretch;
+    align-items: flex-end;
   }
   .tabs {
-    flex: 1 1 100%;
-    width: 100%;
     padding-top: 4px;
   }
   .top-actions {

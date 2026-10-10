@@ -33,6 +33,7 @@
               ? 'Do súkromného kanála má prístup iba jeho člen.'
               : 'Do verejného kanála môže používateľa pozvať každý člen.'
           }}</p>
+          <p>Používateľ sa stane členom až po prijatí pozvánky.</p>
           <q-form class="channel-invite-form" @submit="invite">
             <q-select
               v-model="selectedNick"
@@ -55,9 +56,32 @@
             />
           </q-form>
           <p v-if="!inviteOptions.length" class="hint"
-            >Všetci dostupní používatelia sú už členmi kanála.</p
+            >Všetci dostupní používatelia sú už členmi alebo majú pozvánku.</p
           >
         </template>
+      </section>
+
+      <section
+        v-if="channel.invitations && channel.invitations.length"
+        class="channel-member-section"
+        aria-labelledby="pending-title"
+      >
+        <h2 id="pending-title"
+          >Čakajúce pozvánky ({{ channel.invitations.length }})</h2
+        >
+        <ul class="channel-member-list">
+          <li
+            v-for="invitation in channel.invitations"
+            :key="invitation.nick"
+            class="channel-member-row"
+          >
+            <UserAvatar :nick="invitation.nick" />
+            <div class="channel-member-info">
+              <b>@{{ invitation.nick }}</b>
+              <small>Čaká na prijatie pozvánky</small>
+            </div>
+          </li>
+        </ul>
       </section>
 
       <section class="channel-member-section" aria-labelledby="member-title">
@@ -115,7 +139,8 @@
       >
         <h2 id="banned-title">Zablokovaní používatelia</h2>
         <p class="hint"
-          >Obnovením prístupu sa používateľ vráti medzi členov kanála.</p
+          >Obnovením prístupu sa odošle pozvánka. Členom sa používateľ stane po
+          jej prijatí.</p
         >
         <ul class="channel-member-list">
           <li
@@ -179,7 +204,12 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { state, findChannel, runCommand } from '@/stores/chat.js'
+import {
+  state,
+  findChannel,
+  runCommand,
+  hasChannelInvitation
+} from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const route = useRoute()
@@ -194,7 +224,18 @@ watch(
   }
 )
 const channel = computed(() => findChannel(route.params.name))
-const isMember = computed(() => channel.value?.members.includes(state.me))
+const isMember = computed(() => {
+  if (!channel.value) {
+    return false
+  }
+  if (channel.value.banned.includes(state.me)) {
+    return false
+  }
+  if (hasChannelInvitation(channel.value)) {
+    return false
+  }
+  return channel.value.members.includes(state.me)
+})
 const isAdmin = computed(() => channel.value?.admin === state.me)
 const canInvite = computed(
   () => isMember.value && (!channel.value.private || isAdmin.value)
@@ -202,8 +243,17 @@ const canInvite = computed(
 const inviteOptions = computed(() => {
   const options = []
   for (const nick of Object.keys(state.users)) {
-    if (channel.value?.members.includes(nick)) continue
-    if (channel.value?.banned.includes(nick)) continue
+    if (channel.value) {
+      if (channel.value.members.includes(nick)) {
+        continue
+      }
+      if (channel.value.banned.includes(nick)) {
+        continue
+      }
+    }
+    if (hasChannelInvitation(channel.value, nick)) {
+      continue
+    }
 
     options.push({
       label: '@' + nick + ' ' + state.users[nick].name,

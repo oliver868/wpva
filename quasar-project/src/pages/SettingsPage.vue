@@ -132,6 +132,7 @@
           icon="logout"
           label="Odhlásiť sa"
           to="/login"
+          replace
           @click="signedIn = false"
         />
       </section>
