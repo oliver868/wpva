@@ -951,6 +951,8 @@ button.chip {
 .panels {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: max-content; // riadok má výšku podľa obsahu, panely sa neprekrývajú
+  align-content: start;
   align-items: start;
   gap: 16px;
   padding: 18px;

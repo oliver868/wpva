@@ -187,7 +187,18 @@
         />
 
         <aside v-if="showMembers" class="members">
-          <h3>Členovia ({{ channelMembers.length }})</h3>
+          <div class="members-heading">
+            <h3>Členovia ({{ channelMembers.length }})</h3>
+            <q-btn
+              flat
+              dense
+              round
+              size="sm"
+              icon="close"
+              aria-label="Skryť členov"
+              @click="showMembers = false"
+            />
+          </div>
           <div v-for="nick in channelMembers" :key="nick" class="member">
             <UserAvatar :nick="nick" small />
             <b>{{ nick }}</b>
@@ -295,7 +306,8 @@ const closed = computed(() =>
   state.closedChannels.find(item => item.name === route.params.name)
 )
 const input = ref('')
-const showMembers = ref(true)
+// na mobile (do 700 px) sú členovia predvolene skrytí, otvoria sa tlačidlom
+const showMembers = ref($q.screen.width > 700)
 const showTyping = ref(false)
 const composerInput = ref(null)
 const composerFocused = ref(false)
@@ -443,6 +455,12 @@ function decline() {
 </script>
 
 <style lang="scss">
+.members-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .channel-access {
   padding: 24px;
   text-align: center;
