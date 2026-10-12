@@ -64,7 +64,12 @@ export const state = reactive({
     mara: { name: 'Mária S.', status: 'online', color: 'pink' },
     tomas: { name: 'Tomáš B.', status: 'dnd', color: 'blue' },
     lucia: { name: 'Lucia P.', status: 'offline', color: 'yellow' },
-    peter: { name: 'Peter M.', status: 'offline', color: 'lav' }
+    peter: { name: 'Peter M.', status: 'offline', color: 'lav' },
+    kristian: { name: 'Kiko.', status: 'offline', color: 'lav' },
+    fule: { name: 'Fule.', status: 'offline', color: 'lav' },
+    jano: { name: 'jano.', status: 'offline', color: 'lav' }
+
+    
   },
 
   channels: [
@@ -177,6 +182,57 @@ export const state = reactive({
         }
       ]
     },
+        {
+      nick: 'kristian',
+      threads: [
+        {
+          id: 'main',
+          title: 'Hlavný chat',
+          notify: 'all',
+          messages: [
+            {
+              from: 'kristian',
+              text: 'Nezabudni na link na repo :)',
+              time: '09:35'
+            }
+          ]
+        }
+      ]
+    },
+        {
+      nick: 'jano',
+      threads: [
+        {
+          id: 'main',
+          title: 'Hlavný chat',
+          notify: 'all',
+          messages: [
+            {
+              from: 'jano',
+              text: 'Nezabudni na link na repo :)',
+              time: '09:35'
+            }
+          ]
+        }
+      ]
+    },
+        {
+      nick: 'fule',
+      threads: [
+        {
+          id: 'main',
+          title: 'Hlavný chat',
+          notify: 'all',
+          messages: [
+            {
+              from: 'fule',
+              text: 'Nezabudni na link na repo :)',
+              time: '09:35'
+            }
+          ]
+        }
+      ]
+    },
     {
       nick: 'tomas',
       threads: [
@@ -186,6 +242,20 @@ export const state = reactive({
           notify: 'all',
           messages: [
             { from: 'tomas', text: 'Vďaka za pomoc s /invite!', time: 'Včera' }
+          ]
+        }
+      ]
+    },
+
+    {
+      nick: 'tomas',
+      threads: [
+        {
+          id: 'main',
+          title: 'Hlavný chat',
+          notify: 'all',
+          messages: [
+            { from: 'tomas', text: 'Vďaka za pomocsdad s /invite!', time: 'Včera' }
           ]
         }
       ]
@@ -328,6 +398,7 @@ export function createServer(name) {
   }
 
   state.servers.push({ name: serverName, admin: state.me, channels: [] })
+  createChannel("general-"+serverName.toLocaleLowerCase('sk').replace(/\s+/g, '-'),false,serverName)
   state.activeServer = serverName
   return { message: `Server ${serverName} vytvorený.`, goTo: '/home' }
 }
@@ -461,7 +532,8 @@ export function createChannel(
     banned: [],
     kicks: {},
     notify: 'all',
-    messages: []
+    messages: [],
+    
   })
   server.channels.push(normalized)
   state.activeServer = server.name

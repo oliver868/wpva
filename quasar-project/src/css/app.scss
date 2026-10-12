@@ -47,6 +47,8 @@ h3 {
   line-height: 1.4;
 }
 
+
+
 .logo {
   display: inline-flex;
   align-items: center;
@@ -387,6 +389,15 @@ button.chip {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
 }
+  .home-server-list{
+    max-height: 20rem;
+    overflow-y: auto;
+  }
+
+  .home-friend-list{
+    max-height: 20.23rem;
+    overflow-y: auto;
+  }
 
 .main {
   display: flex;
@@ -793,6 +804,7 @@ button.chip {
   background: var(--sheet);
   border: var(--border);
   border-radius: 14px;
+  flex-shrink: 0;
 }
 .home-notifications-heading {
   display: flex;
@@ -810,6 +822,8 @@ button.chip {
 }
 .home-notification-list {
   display: grid;
+  max-height: 8rem;
+  overflow-y: auto;
 }
 .home-notification {
   display: flex;
@@ -1113,4 +1127,6 @@ button.chip {
   .auth.auth-in-app {
     align-content: start;
   }
+
+
 }
