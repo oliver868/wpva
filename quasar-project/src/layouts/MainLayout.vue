@@ -60,19 +60,26 @@
               class="side-channel"
               :class="{
                 invite: hasChannelInvitation(c),
-                active: route.params.name === c.name
+                active: route.params.name === c.name,
               }"
               @click="selectServerOf(c)"
             >
               <q-icon :name="channelIcon(c)" size="16px" aria-hidden="true" />
               <span>{{ c.name }}</span>
               <span v-if="hasChannelInvitation(c)" class="chip">pozvánka</span>
+              <!-- stlmený kanál (zvonček → Stlmiť) -->
+              <q-icon
+                v-else-if="c.notify === 'off'"
+                name="notifications_off"
+                size="16px"
+                aria-label="Stlmené notifikácie"
+              />
             </router-link>
             <p v-if="!filteredChannels.length" class="side-empty">
               {{
                 sidebarQuery
-                  ? 'Nenašli sa kanály'
-                  : 'Zatiaľ nie si v žiadnom kanáli'
+                  ? "Nenašli sa kanály"
+                  : "Zatiaľ nie si v žiadnom kanáli"
               }}
             </p>
           </q-expansion-item>
@@ -117,7 +124,7 @@
               class="server"
               :class="{
                 active: state.activeServer === s.name,
-                invite: s.hasInvitation
+                invite: s.hasInvitation,
               }"
               :aria-label="
                 s.hasInvitation ? `${s.name} – pozvánka do kanála` : undefined
@@ -253,12 +260,19 @@
         </div>
 
         <div class="top-row">
-          <nav class="tabs">
+          <div class="tabs-wrap">
+          <nav
+            ref="tabsBox"
+            class="tabs"
+            :class="{ 'tabs--more': hiddenTabs.length }"
+            @scroll="countHiddenTabs"
+          >
             <template v-if="(channel || invitedChannel) && signedIn">
               <router-link
                 v-for="c in tabs"
                 :key="c.name"
                 :to="'/c/' + c.name"
+                :data-channel="c.name"
                 class="tab"
                 :class="{ invite: hasChannelInvitation(c) }"
                 :aria-label="
@@ -291,7 +305,7 @@
             </template>
             <router-link v-else-if="isAuthPage" :to="route.path" class="tab">
               <q-icon name="account_circle" size="16px" />
-              {{ route.path === '/login' ? 'Prihlásenie' : 'Registrácia' }}
+              {{ route.path === "/login" ? "Prihlásenie" : "Registrácia" }}
             </router-link>
             <router-link
               v-else-if="route.name === 'home'"
@@ -302,6 +316,32 @@
               Prehľad
             </router-link>
           </nav>
+
+          <!-- koľko kanálov sa nezmestilo; po kliknutí ich zoznam -->
+          <q-btn
+            v-if="hiddenTabs.length"
+            class="tab more-tabs"
+            unelevated
+            dense
+            no-caps
+            :label="'+' + hiddenTabs.length"
+            :aria-label="`Ďalšie kanály (${hiddenTabs.length})`"
+          >
+            <q-menu anchor="bottom right" self="top right">
+              <q-list class="menu-box">
+                <q-item
+                  v-for="name in hiddenTabs"
+                  :key="name"
+                  v-close-popup
+                  clickable
+                  :to="'/c/' + name"
+                >
+                  <q-item-section># {{ name }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+          </div>
 
           <q-btn
             v-if="friend && signedIn"
@@ -337,7 +377,7 @@
                     :options="[
                       { label: 'Všetky správy', value: 'all' },
                       { label: 'Iba @zmienky', value: 'mentions' },
-                      { label: 'Stlmiť', value: 'off' }
+                      { label: 'Stlmiť', value: 'off' },
                     ]"
                   />
                 </div>
@@ -361,7 +401,7 @@
                   <template v-if="channel">
                     <span>Server: {{ serverName }}</span>
                     <span
-                      >Typ: {{ channel.private ? 'súkromný' : 'verejný' }}</span
+                      >Typ: {{ channel.private ? "súkromný" : "verejný" }}</span
                     >
                     <span>Správca: @{{ channel.admin }}</span>
                     <span>Členov: {{ channel.members.length }}</span>
@@ -483,21 +523,21 @@
       @update:model-value="pendingExit = null"
     >
       <div v-if="pendingExit" class="dialog">
-        <h2>{{
-          pendingExitDeletesChannel ? 'Zrušiť kanál?' : 'Opustiť kanál?'
-        }}</h2>
-        <p v-if="pendingExitDeletesChannel"
-          >Odchodom správcu sa celý kanál #{{ pendingExit.name }} zruší. Všetci
-          členovia stratia prístup k jeho správam.</p
-        >
-        <p v-else
-          >Opustíš #{{ pendingExit.name }} a kanál sa odstráni z tvojho zoznamu.
+        <h2>
+          {{ pendingExitDeletesChannel ? "Zrušiť kanál?" : "Opustiť kanál?" }}
+        </h2>
+        <p v-if="pendingExitDeletesChannel">
+          Odchodom správcu sa celý kanál #{{ pendingExit.name }} zruší. Všetci
+          členovia stratia prístup k jeho správam.
+        </p>
+        <p v-else>
+          Opustíš #{{ pendingExit.name }} a kanál sa odstráni z tvojho zoznamu.
           {{
             pendingExit.private
-              ? 'Na návrat budeš potrebovať novú pozvánku.'
-              : 'Do verejného kanála sa môžeš neskôr znova pripojiť.'
-          }}</p
-        >
+              ? "Na návrat budeš potrebovať novú pozvánku."
+              : "Do verejného kanála sa môžeš neskôr znova pripojiť."
+          }}
+        </p>
         <div class="row justify-end q-gutter-sm">
           <q-btn
             class="k-btn"
@@ -548,16 +588,16 @@
               label="Súkromný kanál"
               color="positive"
             />
-            <p class="hint"
-              >Kanál sa vytvorí na vybranom serveri. V chate ho môžeš vytvoriť
-              aj príkazom /join.</p
-            >
+            <p class="hint">
+              Kanál sa vytvorí na vybranom serveri. V chate ho môžeš vytvoriť aj
+              príkazom /join.
+            </p>
           </template>
           <template v-else>
-            <p class="hint"
-              >Zatiaľ nie si členom žiadneho servera. Vytvor si vlastný alebo
-              prijmi pozvánku do kanála.</p
-            >
+            <p class="hint">
+              Zatiaľ nie si členom žiadneho servera. Vytvor si vlastný alebo
+              prijmi pozvánku do kanála.
+            </p>
             <q-btn
               class="k-btn yellow"
               unelevated
@@ -602,10 +642,10 @@
             label="Názov servera"
             :rules="[validateServerName]"
           />
-          <p class="hint"
-            >Server sa pridá do tvojho zoznamu. Potom v ňom môžeš vytvoriť
-            kanály.</p
-          >
+          <p class="hint">
+            Server sa pridá do tvojho zoznamu. Potom v ňom môžeš vytvoriť
+            kanály.
+          </p>
           <div class="row justify-end q-gutter-sm">
             <q-btn
               v-close-popup
@@ -639,11 +679,11 @@
             label="Názov threadu"
             prefix="@"
             placeholder="nazov-threadu"
-            :rules="[v => !!v?.trim() || 'Zadaj názov threadu']"
+            :rules="[(v) => !!v?.trim() || 'Zadaj názov threadu']"
           />
-          <p class="hint"
-            >História správ bude patriť iba do chatu s @{{ friend?.nick }}.</p
-          >
+          <p class="hint">
+            História správ bude patriť iba do chatu s @{{ friend?.nick }}.
+          </p>
           <div class="row justify-end q-gutter-sm">
             <q-btn
               v-close-popup
@@ -667,9 +707,17 @@
 </template>
 
 <script setup>
-import { computed, provide, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  ref,
+  watch,
+} from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useQuasar } from "quasar";
 import {
   state,
   findChannel,
@@ -680,310 +728,341 @@ import {
   runCommand,
   createChannel,
   createServer,
-  setChannelVisibility
-} from '@/stores/chat.js'
-import UserAvatar from '@/components/UserAvatar.vue'
-import { signedIn } from '@/stores/auth.js'
+  setChannelVisibility,
+} from "@/stores/chat.js";
+import UserAvatar from "@/components/UserAvatar.vue";
+import { signedIn } from "@/stores/auth.js";
 
-const route = useRoute()
-const router = useRouter()
-const $q = useQuasar()
-const isAuthPage = computed(() => ['/login', '/register'].includes(route.path))
+const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
+const isAuthPage = computed(() => ["/login", "/register"].includes(route.path));
 watch(
   isAuthPage,
-  value => {
-    if (value) signedIn.value = false
+  (value) => {
+    if (value) signedIn.value = false;
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
-const drawer = ref(false)
-const showCreate = ref(false)
-const showServerDialog = ref(false)
-const newServerName = ref('')
+const drawer = ref(false);
+const showCreate = ref(false);
+const showServerDialog = ref(false);
+const newServerName = ref("");
 const channelServerOptions = computed(() => {
-  const names = []
+  const names = [];
   for (const server of joinedServers()) {
-    names.push(server.name)
+    names.push(server.name);
   }
-  return names
-})
-const showThreadDialog = ref(false)
-const pendingExit = ref(null)
+  return names;
+});
+const showThreadDialog = ref(false);
+const pendingExit = ref(null);
 const pendingExitDeletesChannel = computed(() => {
   if (!pendingExit.value) {
-    return false
+    return false;
   }
   return (
-    pendingExit.value.command === '/quit' ||
+    pendingExit.value.command === "/quit" ||
     pendingExit.value.admin === state.me
-  )
-})
+  );
+});
 watch(
   () => route.fullPath,
   () => {
-    pendingExit.value = null
-  }
-)
-const newName = ref('')
-const newThreadName = ref('')
-const newPrivate = ref(false)
-const newServer = ref(state.activeServer)
+    pendingExit.value = null;
+  },
+);
+const newName = ref("");
+const newThreadName = ref("");
+const newPrivate = ref(false);
+const newServer = ref(state.activeServer);
 const colorOptions = [
-  { label: 'Levanduľová', value: 'lav' },
-  { label: 'Mätová', value: 'mint' },
-  { label: 'Ružová', value: 'pink-l' },
-  { label: 'Svetlá', value: 'tint' }
-]
+  { label: "Levanduľová", value: "lav" },
+  { label: "Mätová", value: "mint" },
+  { label: "Ružová", value: "pink-l" },
+  { label: "Svetlá", value: "tint" },
+];
 const fontOptions = [
-  { label: 'Figtree', value: 'figtree' },
-  { label: 'Systémové písmo', value: 'system' },
-  { label: 'Serifové písmo', value: 'serif' }
-]
+  { label: "Figtree", value: "figtree" },
+  { label: "Systémové písmo", value: "system" },
+  { label: "Serifové písmo", value: "serif" },
+];
 const chatStyle = computed(() => ({
-  '--chat-color': `var(--${state.chatAppearance.color})`,
-  '--chat-font': {
+  "--chat-color": `var(--${state.chatAppearance.color})`,
+  "--chat-font": {
     figtree: "'Figtree', system-ui, sans-serif",
-    system: 'system-ui, sans-serif',
-    serif: 'Georgia, serif'
-  }[state.chatAppearance.font]
-}))
-const sidebarSearch = ref('')
-const channelsExpanded = ref(true)
-const friendsExpanded = ref(true)
-const serversExpanded = ref(true)
+    system: "system-ui, sans-serif",
+    serif: "Georgia, serif",
+  }[state.chatAppearance.font],
+}));
+const sidebarSearch = ref("");
+const channelsExpanded = ref(true);
+const friendsExpanded = ref(true);
+const serversExpanded = ref(true);
 
-const sidebarQuery = computed(() => normalizeSearch(sidebarSearch.value))
+const sidebarQuery = computed(() => normalizeSearch(sidebarSearch.value));
 const filteredChannels = computed(() =>
-  visibleChannels().filter(channel =>
-    normalizeSearch(channel.name).includes(sidebarQuery.value)
-  )
-)
+  visibleChannels().filter((channel) =>
+    normalizeSearch(channel.name).includes(sidebarQuery.value),
+  ),
+);
 
 function selectServerOf(channel) {
-  const server = state.servers.find(s => s.channels.includes(channel.name))
-  if (server) state.activeServer = server.name
+  const server = state.servers.find((s) => s.channels.includes(channel.name));
+  if (server) state.activeServer = server.name;
 }
 const filteredFriends = computed(() =>
-  state.friends.filter(friend =>
+  state.friends.filter((friend) =>
     normalizeSearch(
-      `${friend.nick} ${state.users[friend.nick]?.name || ''}`
-    ).includes(sidebarQuery.value)
-  )
-)
+      `${friend.nick} ${state.users[friend.nick]?.name || ""}`,
+    ).includes(sidebarQuery.value),
+  ),
+);
 const filteredServers = computed(() =>
-  visibleServers().filter(server =>
-    normalizeSearch(server.name).includes(sidebarQuery.value)
-  )
-)
+  visibleServers().filter((server) =>
+    normalizeSearch(server.name).includes(sidebarQuery.value),
+  ),
+);
 
 function normalizeSearch(value) {
   return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('sk')
-    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("sk")
+    .trim();
 }
 
-watch(sidebarSearch, value => {
+watch(sidebarSearch, (value) => {
   if (value?.trim()) {
-    channelsExpanded.value = true
-    friendsExpanded.value = true
-    serversExpanded.value = true
+    channelsExpanded.value = true;
+    friendsExpanded.value = true;
+    serversExpanded.value = true;
   }
-})
+});
 
-const tabs = computed(() => visibleChannels(state.activeServer))
+const tabs = computed(() => visibleChannels(state.activeServer));
+
+// záložky, ktoré sa nezmestili do riadku (sú mimo viditeľnej časti)
+const tabsBox = ref(null);
+const hiddenTabs = ref([]);
+function countHiddenTabs() {
+  const box = tabsBox.value;
+  if (!box) return;
+  const visible = box.getBoundingClientRect();
+  const hidden = [];
+  for (const tab of box.querySelectorAll("[data-channel]")) {
+    const rect = tab.getBoundingClientRect();
+    if (rect.right > visible.right + 1 || rect.left < visible.left - 1) {
+      hidden.push(tab.dataset.channel);
+    }
+  }
+  hiddenTabs.value = hidden;
+}
+// prepočítať po zmene kanálov, servera alebo veľkosti okna
+watch(
+  () => [tabs.value.length, route.fullPath, state.activeServer],
+  () => nextTick(countHiddenTabs),
+);
+onMounted(() => {
+  window.addEventListener("resize", countHiddenTabs);
+  nextTick(countHiddenTabs);
+});
+onBeforeUnmount(() => window.removeEventListener("resize", countHiddenTabs));
 const invitedChannel = computed(() => {
   for (const channel of tabs.value) {
     if (channel.name === route.params.name && hasChannelInvitation(channel)) {
-      return channel
+      return channel;
     }
   }
-  return undefined
-})
+  return undefined;
+});
 
 function channelIcon(channel) {
   if (hasChannelInvitation(channel)) {
-    return 'mail'
+    return "mail";
   }
   if (channel.private) {
-    return 'lock'
+    return "lock";
   }
-  return 'tag'
+  return "tag";
 }
 
 const channel = computed(() => {
-  const currentChannel = findChannel(route.params.name)
+  const currentChannel = findChannel(route.params.name);
   if (currentChannel && currentChannel.members.includes(state.me)) {
-    return currentChannel
+    return currentChannel;
   }
-  return null
-})
+  return null;
+});
 const friend = computed(() =>
-  state.friends.find(f => f.nick === route.params.nick)
-)
+  state.friends.find((f) => f.nick === route.params.nick),
+);
 const activeThread = computed(
   () =>
-    friend.value?.threads.find(t => t.id === route.params.threadId) ||
-    friend.value?.threads[0]
-)
-const current = computed(() => channel.value || activeThread.value)
+    friend.value?.threads.find((t) => t.id === route.params.threadId) ||
+    friend.value?.threads[0],
+);
+const current = computed(() => channel.value || activeThread.value);
 const title = computed(() =>
   channel.value
-    ? '#' + channel.value.name
-    : '@' + friend.value.nick + ' ' + activeThread.value.title
-)
+    ? "#" + channel.value.name
+    : "@" + friend.value.nick + " " + activeThread.value.title,
+);
 const serverName = computed(
   () =>
-    state.servers.find(s => s.channels.includes(channel.value.name))?.name ||
-    'žiadny'
-)
+    state.servers.find((s) => s.channels.includes(channel.value.name))?.name ||
+    "žiadny",
+);
 
 function updateChannelVisibility(isPrivate, target = channel.value) {
-  if (!target) return
-  const result = setChannelVisibility(target.name, isPrivate)
-  if (!result.success) $q.notify(result.message)
+  if (!target) return;
+  const result = setChannelVisibility(target.name, isPrivate);
+  if (!result.success) $q.notify(result.message);
 }
-provide('updateChannelVisibility', updateChannelVisibility)
+provide("updateChannelVisibility", updateChannelVisibility);
 
 function confirmChannelExit(command, target = channel.value) {
-  if (!target) return
-  if (command === '/quit' && target.admin !== state.me) {
-    $q.notify('Zrušiť kanál môže iba správca')
-    return
+  if (!target) return;
+  if (command === "/quit" && target.admin !== state.me) {
+    $q.notify("Zrušiť kanál môže iba správca");
+    return;
   }
   pendingExit.value = {
     name: target.name,
     admin: target.admin,
     private: target.private,
-    command
-  }
+    command,
+  };
 }
-provide('confirmChannelExit', confirmChannelExit)
+provide("confirmChannelExit", confirmChannelExit);
 
 function submitChannelExit() {
-  const action = pendingExit.value
-  pendingExit.value = null
-  if (!action) return
+  const action = pendingExit.value;
+  pendingExit.value = null;
+  if (!action) return;
 
-  const target = findChannel(action.name)
-  if (!target) return
-  if (!target.members.includes(state.me)) return
-  const result = runCommand(action.command, target)
-  $q.notify(result.message)
-  if (result.goTo) router.push(result.goTo)
+  const target = findChannel(action.name);
+  if (!target) return;
+  if (!target.members.includes(state.me)) return;
+  const result = runCommand(action.command, target);
+  $q.notify(result.message);
+  if (result.goTo) router.push(result.goTo);
 }
 
 function validateChannelName(value) {
-  let name = undefined
+  let name = undefined;
   if (value !== undefined && value !== null) {
-    name = value.trim()
+    name = value.trim();
   }
   if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
-    return true
+    return true;
   }
-  return 'Použi malé písmená, čísla a pomlčky'
+  return "Použi malé písmená, čísla a pomlčky";
 }
 
 function validateChannelServer(value) {
   if (channelServerOptions.value.includes(value)) {
-    return true
+    return true;
   }
-  return 'Vyber svoj server'
+  return "Vyber svoj server";
 }
 
 function validateServerName(value) {
   if (value !== undefined && value !== null && value.trim()) {
-    return true
+    return true;
   }
-  return 'Zadaj názov servera'
+  return "Zadaj názov servera";
 }
 
 function openCreate(serverName = state.activeServer) {
-  newServer.value = ''
+  newServer.value = "";
   if (channelServerOptions.value.includes(serverName)) {
-    newServer.value = serverName
+    newServer.value = serverName;
   } else if (channelServerOptions.value.length > 0) {
-    newServer.value = channelServerOptions.value[0]
+    newServer.value = channelServerOptions.value[0];
   }
-  showCreate.value = true
+  showCreate.value = true;
 }
-provide('openCreateChannel', openCreate)
+provide("openCreateChannel", openCreate);
 
 function openCreateServer() {
-  showCreate.value = false
-  newServerName.value = ''
-  showServerDialog.value = true
+  showCreate.value = false;
+  newServerName.value = "";
+  showServerDialog.value = true;
 }
-provide('openCreateServer', openCreateServer)
+provide("openCreateServer", openCreateServer);
 
 function submitServer() {
-  const result = createServer(newServerName.value)
-  $q.notify(result.message)
+  const result = createServer(newServerName.value);
+  $q.notify(result.message);
   if (!result.goTo) {
-    return
+    return;
   }
-  showServerDialog.value = false
+  showServerDialog.value = false;
   if ($q.screen.lt.md) {
-    drawer.value = false
+    drawer.value = false;
   }
-  serversExpanded.value = true
-  sidebarSearch.value = ''
-  router.push(result.goTo)
+  serversExpanded.value = true;
+  sidebarSearch.value = "";
+  router.push(result.goTo);
 }
 
 function submitChannel() {
-  const result = createChannel(newName.value, newPrivate.value, newServer.value)
-  $q.notify(result.message)
-  if (!result.goTo) return
-  showCreate.value = false
-  newName.value = ''
-  newPrivate.value = false
-  router.push(result.goTo)
+  const result = createChannel(
+    newName.value,
+    newPrivate.value,
+    newServer.value,
+  );
+  $q.notify(result.message);
+  if (!result.goTo) return;
+  showCreate.value = false;
+  newName.value = "";
+  newPrivate.value = false;
+  router.push(result.goTo);
 }
 
 function friendRoute(person, thread = person.threads[0]) {
-  return '/dm/' + person.nick + '/' + thread.id
+  return "/dm/" + person.nick + "/" + thread.id;
 }
 
 function lastMessage(person) {
   for (let index = person.threads.length - 1; index >= 0; index -= 1) {
-    const messages = person.threads[index].messages
-    if (messages.length) return messages[messages.length - 1].text
+    const messages = person.threads[index].messages;
+    if (messages.length) return messages[messages.length - 1].text;
   }
-  return 'Zatiaľ bez správ'
+  return "Zatiaľ bez správ";
 }
 
 function createThread() {
-  const name = newThreadName.value.trim()
-  if (!name || !friend.value) return
+  const name = newThreadName.value.trim();
+  if (!name || !friend.value) return;
 
   const alreadyExists = friend.value.threads.some(
-    thread =>
-      thread.title.toLocaleLowerCase('sk') === name.toLocaleLowerCase('sk')
-  )
+    (thread) =>
+      thread.title.toLocaleLowerCase("sk") === name.toLocaleLowerCase("sk"),
+  );
   if (alreadyExists) {
-    $q.notify('Thread s týmto názvom už existuje')
-    return
+    $q.notify("Thread s týmto názvom už existuje");
+    return;
   }
 
   const thread = {
     id: `thread-${Date.now().toString(36)}-${friend.value.threads.length}`,
     title: name,
-    notify: 'all',
-    messages: []
-  }
-  friend.value.threads.push(thread)
-  showThreadDialog.value = false
-  newThreadName.value = ''
-  router.push(friendRoute(friend.value, thread))
-  $q.notify(`Thread „${name}“ vytvorený pre @${friend.value.nick}`)
+    notify: "all",
+    messages: [],
+  };
+  friend.value.threads.push(thread);
+  showThreadDialog.value = false;
+  newThreadName.value = "";
+  router.push(friendRoute(friend.value, thread));
+  $q.notify(`Thread „${name}“ vytvorený pre @${friend.value.nick}`);
 }
 
 function removeFriend() {
-  $q.notify(`@${friend.value.nick} odstránený z priateľov`)
-  state.friends.splice(state.friends.indexOf(friend.value), 1)
-  router.push('/')
+  $q.notify(`@${friend.value.nick} odstránený z priateľov`);
+  state.friends.splice(state.friends.indexOf(friend.value), 1);
+  router.push("/");
 }
 </script>

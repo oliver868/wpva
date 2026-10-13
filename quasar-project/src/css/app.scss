@@ -118,8 +118,12 @@ button.chip {
   padding: 6px 0;
   font-family: var(--title);
 }
+.k-input .q-field__native {
+  padding-left: 8px;
+}
 
 .k-input .q-field__control {
+
   padding: 0 12px;
   background: var(--tint);
   border: var(--border);
@@ -445,6 +449,14 @@ button.chip {
   border-radius: 12px;
   box-shadow: none;
 }
+// obal: záložky + tlačidlo "+N" (koľko kanálov sa nezmestilo)
+.tabs-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
 .tabs {
   flex: 1;
   min-width: 0;
@@ -454,6 +466,24 @@ button.chip {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+}
+// keď sa záložky nezmestia, posledné jemne vyblednú (je vidno, že pokračujú)
+.tabs.tabs--more {
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+// tlačidlo "+N" vyzerá rovnako ako záložka, len je mätové
+.more-tabs.tab {
+  flex: none;
+  min-height: 0;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 800;
+  line-height: inherit;
+  background: var(--mint);
+  border-radius: 12px 12px 0 0;
+}
+.more-tabs.tab .q-btn__content {
+  min-height: 0;
 }
 .tab {
   flex: none;
@@ -1086,17 +1116,26 @@ button.chip {
   .home-channel-list {
     margin-left: 0;
   }
+  // na mobile: zvonček a nastavenia v riadku nad záložkami, záložky na celú šírku
   .top-row {
-    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .tabs-wrap {
+    flex-basis: 100%;
   }
   .tabs {
     padding-top: 4px;
   }
   .top-actions {
+    order: -1;
     margin-left: auto;
   }
+  // vo vlastnom riadku to nie sú záložky, ale normálne tlačidlá
   .top-actions .tab {
     padding: 8px;
+    margin-bottom: 0;
+    border-bottom: var(--border);
+    border-radius: 12px;
   }
   .message {
     max-width: 90%;
