@@ -26,7 +26,7 @@
           class="k-btn"
           unelevated
           no-caps
-          icon="dns"
+          icon="add"
           label="Vytvoriť server"
           @click="openCreateServer()"
         />
@@ -312,7 +312,7 @@
               to="/home"
               class="tab"
             >
-              <q-icon name="dashboard" size="16px" />
+              <q-icon name="home" size="16px" />
               Prehľad
             </router-link>
           </nav>
@@ -602,7 +602,7 @@
               class="k-btn yellow"
               unelevated
               no-caps
-              icon="dns"
+              icon="add"
               label="Vytvoriť server"
               @click="openCreateServer()"
             />
