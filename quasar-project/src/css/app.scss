@@ -401,16 +401,6 @@ button.chip {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
 }
-  .home-server-list{
-    max-height: 20rem;
-    overflow-y: auto;
-  }
-
-  .home-friend-list{
-    max-height: 20.23rem;
-    overflow-y: auto;
-  }
-
 .main {
   display: flex;
   flex-direction: column;
@@ -592,6 +582,7 @@ button.chip {
 }
 .home-welcome {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
@@ -639,6 +630,7 @@ button.chip {
 }
 .home-grid {
   display: grid;
+  flex-shrink: 0;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.9fr);
   align-items: start;
   gap: 16px;
@@ -860,8 +852,6 @@ button.chip {
 }
 .home-notification-list {
   display: grid;
-  max-height: 8rem;
-  overflow-y: auto;
 }
 .home-notification {
   display: flex;

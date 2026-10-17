@@ -48,19 +48,19 @@
 
         <div v-if="signedIn" class="side-lists">
           <q-expansion-item
-            v-model="channelsExpanded"
+            v-model="invitationsExpanded"
             dense
-            label="Moje kanály"
+            label="Pozvánky"
             header-class="side-title"
           >
             <router-link
-              v-for="c in filteredChannels"
+              v-for="c in filteredInvitations"
               :key="c.name"
               :to="'/c/' + c.name"
               class="side-channel"
               :class="{
                 invite: hasChannelInvitation(c),
-                active: route.params.name === c.name,
+                active: route.params.name === c.name
               }"
               @click="selectServerOf(c)"
             >
@@ -75,11 +75,9 @@
                 aria-label="Stlmené notifikácie"
               />
             </router-link>
-            <p v-if="!filteredChannels.length" class="side-empty">
+            <p v-if="!filteredInvitations.length" class="side-empty">
               {{
-                sidebarQuery
-                  ? "Nenašli sa kanály"
-                  : "Zatiaľ nie si v žiadnom kanáli"
+                sidebarQuery ? 'Nenašli sa pozvánky' : 'Nemáš žiadne pozvánky'
               }}
             </p>
           </q-expansion-item>
@@ -117,30 +115,66 @@
             label="Servery"
             header-class="side-title"
           >
-            <router-link
+            <q-expansion-item
               v-for="s in filteredServers"
               :key="s.name"
-              :to="s.channels.length ? '/c/' + s.channels[0] : '/home'"
-              class="server"
-              :class="{
-                active: state.activeServer === s.name,
-                invite: s.hasInvitation,
-              }"
-              :aria-label="
-                s.hasInvitation ? `${s.name} – pozvánka do kanála` : undefined
-              "
-              @click="state.activeServer = s.name"
+              :model-value="!!expandedServers[s.name]"
+              :label="s.hasInvitation ? `${s.name} – pozvánka do kanála` : s.name"
+              class="server-group"
+              :header-class="[
+                'server',
+                {
+                  active: state.activeServer === s.name,
+                  invite: s.hasInvitation
+                }
+              ]"
+              @update:model-value="expandedServers[s.name] = $event"
             >
-              <q-icon name="dns" size="20px" />
-              {{ s.name }}
-              <q-icon
-                v-if="s.hasInvitation"
-                class="server-invite-icon"
-                name="mail_outline"
-                size="18px"
-                aria-hidden="true"
-              />
-            </router-link>
+              <template #header>
+                <q-item-section avatar>
+                  <q-icon name="dns" size="20px" aria-hidden="true" />
+                </q-item-section>
+                <q-item-section class="server-name">{{
+                  s.name
+                }}</q-item-section>
+                <q-item-section v-if="s.hasInvitation" side>
+                  <q-icon
+                    name="mail_outline"
+                    size="18px"
+                    aria-label="Pozvánka do kanála"
+                  />
+                </q-item-section>
+              </template>
+              <router-link
+                v-for="c in s.visibleChannels"
+                :key="c.name"
+                :to="'/c/' + c.name"
+                class="side-channel"
+                :class="{
+                  invite: hasChannelInvitation(c),
+                  active: route.params.name === c.name
+                }"
+                @click="selectServerOf(c)"
+              >
+                <q-icon :name="channelIcon(c)" size="16px" aria-hidden="true" />
+                <span>{{ c.name }}</span>
+                <q-icon
+                  v-if="hasChannelInvitation(c)"
+                  name="mail_outline"
+                  size="16px"
+                  aria-label="Pozvánka do kanála"
+                />
+                <q-icon
+                  v-else-if="c.notify === 'off'"
+                  name="notifications_off"
+                  size="16px"
+                  aria-label="Stlmené notifikácie"
+                />
+              </router-link>
+              <p v-if="!s.visibleChannels.length" class="side-empty">
+                Zatiaľ tu nemáš žiadne kanály
+              </p>
+            </q-expansion-item>
             <p
               v-if="sidebarQuery && !filteredServers.length"
               class="side-empty"
@@ -721,6 +755,8 @@ import { useQuasar } from "quasar";
 import {
   state,
   findChannel,
+  findServerForChannel,
+  lastMessage,
   hasChannelInvitation,
   visibleChannels,
   visibleServers,
@@ -796,50 +832,84 @@ const chatStyle = computed(() => ({
     serif: "Georgia, serif",
   }[state.chatAppearance.font],
 }));
-const sidebarSearch = ref("");
-const channelsExpanded = ref(true);
-const friendsExpanded = ref(true);
-const serversExpanded = ref(true);
+const sidebarSearch = ref('')
+const invitationsExpanded = ref(true)
+const friendsExpanded = ref(true)
+const serversExpanded = ref(true)
+const expandedServers = ref({ [state.activeServer]: true })
 
-const sidebarQuery = computed(() => normalizeSearch(sidebarSearch.value));
-const filteredChannels = computed(() =>
-  visibleChannels().filter((channel) =>
-    normalizeSearch(channel.name).includes(sidebarQuery.value),
+const sidebarQuery = computed(() => normalizeSearch(sidebarSearch.value))
+const filteredInvitations = computed(() =>
+  visibleChannels().filter(
+    (channel) =>
+      hasChannelInvitation(channel) &&
+      normalizeSearch(channel.name).includes(sidebarQuery.value),
   ),
 );
 
 function selectServerOf(channel) {
-  const server = state.servers.find((s) => s.channels.includes(channel.name));
-  if (server) state.activeServer = server.name;
+  const server = findServerForChannel(channel)
+  if (server) {
+    state.activeServer = server.name
+    expandedServers.value[server.name] = true
+  }
 }
+watch(
+  () => route.params.name,
+  name => {
+    const channel = findChannel(name)
+    if (channel) selectServerOf(channel)
+  },
+  { immediate: true }
+)
 const filteredFriends = computed(() =>
-  state.friends.filter((friend) =>
+  state.friends.filter(friend =>
     normalizeSearch(
-      `${friend.nick} ${state.users[friend.nick]?.name || ""}`,
-    ).includes(sidebarQuery.value),
-  ),
-);
+      `${friend.nick} ${state.users[friend.nick]?.name || ''}`
+    ).includes(sidebarQuery.value)
+  )
+)
 const filteredServers = computed(() =>
-  visibleServers().filter((server) =>
-    normalizeSearch(server.name).includes(sidebarQuery.value),
-  ),
+  visibleServers()
+    .map((server) => {
+      const serverMatches = normalizeSearch(server.name).includes(sidebarQuery.value);
+      const channels = visibleChannels(server.name).filter(
+        (channel) =>
+          serverMatches ||
+          normalizeSearch(channel.name).includes(sidebarQuery.value),
+      );
+
+      return {
+        name: server.name,
+        hasInvitation: server.hasInvitation,
+        visibleChannels: channels,
+      };
+    })
+    .filter(
+      (server) =>
+        normalizeSearch(server.name).includes(sidebarQuery.value) ||
+        server.visibleChannels.length > 0,
+    ),
 );
 
 function normalizeSearch(value) {
   return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("sk")
-    .trim();
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('sk')
+    .trim()
 }
 
-watch(sidebarSearch, (value) => {
+watch(sidebarSearch, value => {
   if (value?.trim()) {
-    channelsExpanded.value = true;
-    friendsExpanded.value = true;
-    serversExpanded.value = true;
+    invitationsExpanded.value = true
+    friendsExpanded.value = true
+    serversExpanded.value = true
+    for (const server of filteredServers.value) {
+      expandedServers.value[server.name] = true
+    }
   }
-});
+})
 
 const tabs = computed(() => visibleChannels(state.activeServer));
 
@@ -870,12 +940,9 @@ onMounted(() => {
 });
 onBeforeUnmount(() => window.removeEventListener("resize", countHiddenTabs));
 const invitedChannel = computed(() => {
-  for (const channel of tabs.value) {
-    if (channel.name === route.params.name && hasChannelInvitation(channel)) {
-      return channel;
-    }
-  }
-  return undefined;
+  return tabs.value.find(
+    (channel) => channel.name === route.params.name && hasChannelInvitation(channel),
+  );
 });
 
 function channelIcon(channel) {
@@ -909,11 +976,11 @@ const title = computed(() =>
     ? "#" + channel.value.name
     : "@" + friend.value.nick + " " + activeThread.value.title,
 );
-const serverName = computed(
-  () =>
-    state.servers.find((s) => s.channels.includes(channel.value.name))?.name ||
-    "žiadny",
-);
+const serverName = computed(() => {
+  const server = findServerForChannel(channel.value);
+  if (server) return server.name;
+  return "žiadny";
+});
 
 function updateChannelVisibility(isPrivate, target = channel.value) {
   if (!target) return;
@@ -1026,14 +1093,6 @@ function friendRoute(person, thread = person.threads[0]) {
   return "/dm/" + person.nick + "/" + thread.id;
 }
 
-function lastMessage(person) {
-  for (let index = person.threads.length - 1; index >= 0; index -= 1) {
-    const messages = person.threads[index].messages;
-    if (messages.length) return messages[messages.length - 1].text;
-  }
-  return "Zatiaľ bez správ";
-}
-
 function createThread() {
   const name = newThreadName.value.trim();
   if (!name || !friend.value) return;
@@ -1066,3 +1125,23 @@ function removeFriend() {
   router.push("/");
 }
 </script>
+
+<style scoped>
+.server-group :deep(.server .q-item__section--avatar) {
+  min-width: 20px;
+  padding-right: 0;
+}
+.server-group :deep(.server .q-item__section--side) {
+  padding-left: 0;
+  color: var(--ink);
+}
+.server-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.server-group .side-channel,
+.server-group .side-empty {
+  margin-left: 20px;
+}
+</style>

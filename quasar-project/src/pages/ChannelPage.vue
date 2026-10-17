@@ -371,13 +371,7 @@ const availableCommands = computed(() => {
 })
 const matchingCommands = computed(() => {
   const prefix = input.value.split(/\s/)[0]
-  const matches = []
-  for (const command of availableCommands.value) {
-    if (command.name.startsWith(prefix)) {
-      matches.push(command)
-    }
-  }
-  return matches
+  return availableCommands.value.filter(command => command.name.startsWith(prefix))
 })
 const showCommands = computed(
   () =>

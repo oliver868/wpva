@@ -11,16 +11,23 @@ export function findChannel(name) {
   return state.channels.find((channel) => channel.name === name);
 }
 
+export function findServerForChannel(channel) {
+  return state.servers.find((server) => server.channels.includes(channel.name));
+}
+
+export function lastMessage(friend) {
+  for (let index = friend.threads.length - 1; index >= 0; index -= 1) {
+    const messages = friend.threads[index].messages;
+    if (messages.length) return messages[messages.length - 1].text;
+  }
+  return "Zatiaľ bez správ";
+}
+
 export function channelInvitation(channel, nick = state.me) {
   if (!channel || !channel.invitations) {
     return undefined;
   }
-  for (const invitation of channel.invitations) {
-    if (invitation.nick === nick) {
-      return invitation;
-    }
-  }
-  return undefined;
+  return channel.invitations.find((invitation) => invitation.nick === nick);
 }
 
 export function hasChannelInvitation(channel, nick = state.me) {
@@ -28,15 +35,13 @@ export function hasChannelInvitation(channel, nick = state.me) {
 }
 
 function removeChannelInvitation(channel, nick) {
-  const remainingInvitations = [];
-  if (channel.invitations) {
-    for (const invitation of channel.invitations) {
-      if (invitation.nick !== nick) {
-        remainingInvitations.push(invitation);
-      }
-    }
+  if (!channel.invitations) {
+    channel.invitations = [];
+    return;
   }
-  channel.invitations = remainingInvitations;
+  channel.invitations = channel.invitations.filter(
+    (invitation) => invitation.nick !== nick,
+  );
 }
 
 export function acceptChannelInvitation(channel) {
@@ -54,12 +59,8 @@ export function acceptChannelInvitation(channel) {
   if (!channel.members.includes(state.me)) {
     channel.members.push(state.me);
   }
-  for (const server of state.servers) {
-    if (server.channels.includes(channel.name)) {
-      state.activeServer = server.name;
-      break;
-    }
-  }
+  const server = findServerForChannel(channel);
+  if (server) state.activeServer = server.name;
   return { message: `Prijal si pozvánku do #${channel.name}.`, success: true };
 }
 
@@ -98,13 +99,7 @@ export function isServerMember(serverName) {
 }
 
 export function joinedServers() {
-  const servers = [];
-  for (const server of state.servers) {
-    if (isServerMember(server.name)) {
-      servers.push(server);
-    }
-  }
-  return servers;
+  return state.servers.filter((server) => isServerMember(server.name));
 }
 
 export function createServer(name) {
@@ -263,13 +258,9 @@ export function createChannel(
   });
   server.channels.push(normalized);
   state.activeServer = server.name;
-  const closedChannels = [];
-  for (const closedChannel of state.closedChannels) {
-    if (closedChannel.name !== normalized) {
-      closedChannels.push(closedChannel);
-    }
-  }
-  state.closedChannels = closedChannels;
+  state.closedChannels = state.closedChannels.filter(
+    (closedChannel) => closedChannel.name !== normalized,
+  );
   return {
     message: `Kanál #${normalized} vytvorený v serveri ${server.name}.`,
     goTo: "/c/" + normalized,
@@ -303,12 +294,8 @@ export function runCommand(text, channel) {
       return { message: "V tomto kanáli máš ban" };
     }
     if (hasChannelInvitation(existing)) {
-      for (const server of state.servers) {
-        if (server.channels.includes(existing.name)) {
-          state.activeServer = server.name;
-          break;
-        }
-      }
+      const server = findServerForChannel(existing);
+      if (server) state.activeServer = server.name;
       return {
         message: "Najprv prijmi alebo odmietni pozvánku do tohto kanála.",
         goTo: "/c/" + name,
@@ -324,9 +311,7 @@ export function runCommand(text, channel) {
     if (!existing.members.includes(me)) {
       existing.members.push(me);
     }
-    const server = state.servers.find((item) =>
-      item.channels.includes(existing.name),
-    );
+    const server = findServerForChannel(existing);
     if (server) {
       state.activeServer = server.name;
     }

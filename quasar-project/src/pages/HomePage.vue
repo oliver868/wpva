@@ -196,6 +196,8 @@ import { useRouter } from 'vue-router'
 import {
   state,
   findChannel,
+  findServerForChannel,
+  lastMessage,
   channelInvitation,
   hasChannelInvitation,
   visibleChannels,
@@ -226,15 +228,9 @@ const serverGroups = computed(() => {
   }
   return groups
 })
-const invitations = computed(() => {
-  const invitedChannels = []
-  for (const channel of visibleChannels()) {
-    if (hasChannelInvitation(channel)) {
-      invitedChannels.push(channel)
-    }
-  }
-  return invitedChannels
-})
+const invitations = computed(() =>
+  visibleChannels().filter(channel => hasChannelInvitation(channel))
+)
 const notifications = computed(() => {
   const items = []
   for (const channel of invitations.value) {
@@ -245,7 +241,7 @@ const notifications = computed(() => {
       to: `/c/${channel.name}`,
       invitation: true,
       read: false,
-      server: serverFor(channel)
+      server: findServerForChannel(channel)
     })
   }
   for (const notification of state.notificationFeed) {
@@ -263,33 +259,22 @@ const onlineFriends = computed(
     ).length
 )
 const continueChannel = computed(() => {
-  let channel = null
-  for (const item of state.channels) {
-    if (item.name === 'general' && item.members.includes(state.me)) {
-      channel = item
-      break
-    }
-  }
+  let channel = state.channels.find(
+    item => item.name === 'general' && item.members.includes(state.me)
+  )
   if (!channel) {
-    for (const item of state.channels) {
-      if (!hasChannelInvitation(item) && item.members.includes(state.me)) {
-        channel = item
-        break
-      }
-    }
+    channel = state.channels.find(
+      item => !hasChannelInvitation(item) && item.members.includes(state.me)
+    )
   }
   if (!channel) {
     return { name: '', server: null }
   }
   return {
     name: channel.name,
-    server: serverFor(channel)
+    server: findServerForChannel(channel)
   }
 })
-
-function serverFor(channel) {
-  return state.servers.find(server => server.channels.includes(channel.name))
-}
 
 function openChannel(server, name) {
   if (!name) return
@@ -302,7 +287,7 @@ function openNotification(item) {
     ? state.channels.find(channel => `/c/${channel.name}` === item.to)
     : null
   const server =
-    item.server || (destinationChannel && serverFor(destinationChannel))
+    item.server || (destinationChannel && findServerForChannel(destinationChannel))
   if (server) state.activeServer = server.name
   if (!item.invitation) item.read = true
   router.push(item.to)
@@ -310,14 +295,6 @@ function openNotification(item) {
 
 function friendRoute(friend) {
   return '/dm/' + friend.nick + '/' + friend.threads[0]?.id
-}
-
-function lastMessage(friend) {
-  for (let index = friend.threads.length - 1; index >= 0; index -= 1) {
-    const messages = friend.threads[index].messages
-    if (messages.length) return messages[messages.length - 1].text
-  }
-  return 'Zatiaľ bez správ'
 }
 
 function channelWord(count) {
