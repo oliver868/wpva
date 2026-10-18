@@ -88,7 +88,7 @@
                   @click="openChannel(server, server.channels[0]?.name)"
                 >
                   <span class="home-server-icon"
-                    ><q-icon name="dns" size="19px"
+                    ><q-icon name="img:/icons/server.svg" size="19px"
                   /></span>
                   <span>{{ server.name }}</span>
                 </button>

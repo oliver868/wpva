@@ -132,7 +132,7 @@
             >
               <template #header>
                 <q-item-section avatar>
-                  <q-icon name="dns" size="20px" aria-hidden="true" />
+                  <q-icon name="img:/icons/server.svg" size="20px" aria-hidden="true" />
                 </q-item-section>
                 <q-item-section class="server-name">{{
                   s.name
@@ -1140,8 +1140,24 @@ function removeFriend() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.server-group {
+  margin-bottom: 6px;
+}
+
+.server-group :deep(.server .q-item__section--avatar) {
+  padding-right: 10px;
+}
+
+.server-group :deep(.q-expansion-item__content) {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 4px 22px;
+  padding-left: 10px;
+  border-left: 2px solid var(--lav);
+}
 .server-group .side-channel,
 .server-group .side-empty {
-  margin-left: 20px;
+  margin-left: 0;
 }
 </style>
