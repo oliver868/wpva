@@ -377,18 +377,6 @@
           </q-btn>
           </div>
 
-          <q-btn
-            v-if="friend && signedIn"
-            class="tab new-thread"
-            unelevated
-            dense
-            no-caps
-            icon="add"
-            :label="$q.screen.lt.sm ? 'Thread' : 'Nový thread'"
-            aria-label="Vytvoriť nový thread pre tohto kamaráta"
-            @click="showThreadDialog = true"
-          />
-
           <div v-if="current && signedIn" class="top-actions">
             <q-btn
               class="tab"
@@ -700,43 +688,6 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="showThreadDialog">
-      <q-card class="dialog">
-        <q-form class="dialog-form" @submit="createThread">
-          <h2>Nový thread</h2>
-          <q-input
-            v-model="newThreadName"
-            class="k-input"
-            borderless
-            dense
-            maxlength="40"
-            label="Názov threadu"
-            prefix="@"
-            placeholder="nazov-threadu"
-            :rules="[(v) => !!v?.trim() || 'Zadaj názov threadu']"
-          />
-          <p class="hint">
-            História správ bude patriť iba do chatu s @{{ friend?.nick }}.
-          </p>
-          <div class="row justify-end q-gutter-sm">
-            <q-btn
-              v-close-popup
-              class="k-btn"
-              unelevated
-              no-caps
-              label="Zrušiť"
-            />
-            <q-btn
-              class="k-btn dark"
-              unelevated
-              no-caps
-              type="submit"
-              label="Vytvoriť"
-            />
-          </div>
-        </q-form>
-      </q-card>
-    </q-dialog>
   </q-layout>
 </template>
 
@@ -792,7 +743,6 @@ const channelServerOptions = computed(() => {
   }
   return names;
 });
-const showThreadDialog = ref(false);
 const pendingExit = ref(null);
 const pendingExitDeletesChannel = computed(() => {
   if (!pendingExit.value) {
@@ -810,7 +760,6 @@ watch(
   },
 );
 const newName = ref("");
-const newThreadName = ref("");
 const newPrivate = ref(false);
 const newServer = ref(state.activeServer);
 const colorOptions = [
@@ -923,7 +872,7 @@ function countHiddenTabs() {
   const hidden = [];
   for (const tab of box.querySelectorAll("[data-channel]")) {
     const rect = tab.getBoundingClientRect();
-    if (rect.right > visible.right + 1 || rect.left < visible.left - 1) {
+    if (rect.right > visible.right + 1) {
       hidden.push(tab.dataset.channel);
     }
   }
@@ -1091,32 +1040,6 @@ function submitChannel() {
 
 function friendRoute(person, thread = person.threads[0]) {
   return "/dm/" + person.nick + "/" + thread.id;
-}
-
-function createThread() {
-  const name = newThreadName.value.trim();
-  if (!name || !friend.value) return;
-
-  const alreadyExists = friend.value.threads.some(
-    (thread) =>
-      thread.title.toLocaleLowerCase("sk") === name.toLocaleLowerCase("sk"),
-  );
-  if (alreadyExists) {
-    $q.notify("Thread s týmto názvom už existuje");
-    return;
-  }
-
-  const thread = {
-    id: `thread-${Date.now().toString(36)}-${friend.value.threads.length}`,
-    title: name,
-    notify: "all",
-    messages: [],
-  };
-  friend.value.threads.push(thread);
-  showThreadDialog.value = false;
-  newThreadName.value = "";
-  router.push(friendRoute(friend.value, thread));
-  $q.notify(`Thread „${name}“ vytvorený pre @${friend.value.nick}`);
 }
 
 function removeFriend() {

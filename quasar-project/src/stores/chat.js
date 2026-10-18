@@ -386,53 +386,23 @@ export function runCommand(text, channel) {
   }
 
   if (command === "/revoke") {
-    if (!channel) {
+    if (!channel || !channel.private) {
       return { message: "Príkaz /revoke použi v súkromnom kanáli." };
     }
     if (channel.admin !== me) {
       return { message: "Odoberať môže iba správca" };
     }
-    if (
-      !channel.members.includes(me) ||
-      channel.banned.includes(me) ||
-      hasChannelInvitation(channel)
-    ) {
-      return { message: "Najprv sa pripoj do tohto kanála." };
-    }
-    if (!channel.private) {
-      return { message: "Vo verejnom kanáli použi /kick nick." };
-    }
-    let nickname = "";
-    if (name) {
-      nickname = name.replace(/^@/, "");
-    }
-    if (!nickname || parts.length !== 2) {
+    const member = name?.replace(/^@/, "");
+    if (!member) {
       return { message: "Použi /revoke nick." };
     }
-    let member = "";
-    for (const memberNick of channel.members) {
-      if (
-        memberNick.toLocaleLowerCase("sk") === nickname.toLocaleLowerCase("sk")
-      ) {
-        member = memberNick;
-        break;
-      }
+    if (member === me) {
+      return { message: "Nemôžeš odobrať samého seba." };
     }
-    if (!member) {
-      return { message: `@${nickname} nie je členom tohto kanála.` };
+    if (!channel.members.includes(member)) {
+      return { message: `@${member} nie je členom tohto kanála.` };
     }
-    if (member === channel.admin) {
-      return {
-        message: "Správcu nemožno odobrať. Na zrušenie kanála použi /quit.",
-      };
-    }
-    const remainingMembers = [];
-    for (const nick of channel.members) {
-      if (nick !== member) {
-        remainingMembers.push(nick);
-      }
-    }
-    channel.members = remainingMembers;
+    channel.members = channel.members.filter((nick) => nick !== member);
     delete channel.kicks[member];
     return { message: `@${member} už nemá prístup do #${channel.name}.` };
   }

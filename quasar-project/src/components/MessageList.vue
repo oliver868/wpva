@@ -120,9 +120,6 @@ watch(() => props.messages[props.messages.length - 1], scrollDown)
   color: var(--muted);
 }
 .history-end {
-  padding: 6px 12px;
-  background: var(--tint);
-  border: 1.5px dashed var(--ink);
-  border-radius: 99px;
+  padding: 6px 0;
 }
 </style>

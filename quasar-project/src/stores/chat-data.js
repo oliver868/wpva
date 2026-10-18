@@ -172,6 +172,19 @@ export const initialChatState = {
       ],
     },
     {
+      name: "tajne-tomas-a-dano",
+      private: true,
+      admin: "tomas",
+      members: ["dano", "tomas"],
+      banned: [],
+      kicks: {},
+      notify: "all",
+      messages: [
+        { from: "dano", text: "Vitaj na mojom serveri!", time: "18:02" },
+        { from: "tomas", text: "Vďaka, idem skúšať príkazy.", time: "18:05" },
+      ],
+    },
+    {
       name: "tajne-dano-a-tomas",
       private: true,
       admin: "dano",
@@ -295,7 +308,7 @@ export const initialChatState = {
     {
       name: "Dano a Tomas",
       admin: "dano",
-      channels: ["general-dano-a-tomas", "tajne-dano-a-tomas"],
+      channels: ["general-dano-a-tomas", "tajne-dano-a-tomas", "tajne-tomas-a-dano"],
     },
   ],
   activeServer: "FIIT STU",

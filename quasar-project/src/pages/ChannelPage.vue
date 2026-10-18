@@ -147,7 +147,7 @@
           <span v-else>#</span>
           {{ channel.name }}
         </h1>
-        <span class="chip inline-details">
+        <span class="inline-details">
           <span>{{ channel.private ? 'súkromný' : 'verejný' }}</span>
           <span>správca @{{ channel.admin }}</span>
         </span>
@@ -202,7 +202,7 @@
           <div v-for="nick in channelMembers" :key="nick" class="member">
             <UserAvatar :nick="nick" small />
             <b>{{ nick }}</b>
-            <span v-if="nick === channel.admin" class="chip">správca</span>
+            <span v-if="nick === channel.admin">správca</span>
           </div>
         </aside>
       </div>
@@ -371,7 +371,9 @@ const availableCommands = computed(() => {
 })
 const matchingCommands = computed(() => {
   const prefix = input.value.split(/\s/)[0]
-  return availableCommands.value.filter(command => command.name.startsWith(prefix))
+  return availableCommands.value.filter(command =>
+    command.name.startsWith(prefix)
+  )
 })
 const showCommands = computed(
   () =>

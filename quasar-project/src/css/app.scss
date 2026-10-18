@@ -47,8 +47,6 @@ h3 {
   line-height: 1.4;
 }
 
-
-
 .logo {
   display: inline-flex;
   align-items: center;
@@ -70,17 +68,20 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 0 9px;
+  padding: 0;
   font-size: 12px;
   font-weight: 700;
-  background: var(--tint);
-  border: var(--border);
-  border-radius: 99px;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
   cursor: default;
 }
 button.chip {
   cursor: pointer;
-  background: var(--mint);
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .inline-details {
   display: inline-flex;
@@ -134,7 +135,6 @@ button.chip {
 }
 
 .k-input .q-field__control {
-
   padding: 0 12px;
   background: var(--tint);
   border: var(--border);
@@ -522,14 +522,6 @@ button.chip {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.new-thread.tab {
-  min-height: 0;
-  margin-bottom: -1.5px;
-  padding: 8px 12px;
-  background: var(--mint);
-  border-radius: 12px 12px 0 0;
-  font-weight: 800;
-}
 
 .sheet {
   flex: 1;
@@ -672,7 +664,6 @@ button.chip {
   background: var(--mint);
 }
 .home-section-heading .chip {
-  background: var(--sheet);
   color: var(--ink);
 }
 .home-server {
@@ -1086,6 +1077,11 @@ button.chip {
   border: var(--border);
   border-radius: 12px;
   box-shadow: none;
+  transition: none;
+}
+
+.q-notification__badge {
+  animation: none;
 }
 
 @media (max-width: 1023px) {
@@ -1175,6 +1171,4 @@ button.chip {
   .auth.auth-in-app {
     align-content: start;
   }
-
-
 }

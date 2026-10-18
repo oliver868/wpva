@@ -118,7 +118,7 @@
                 </span>
               </small>
             </div>
-            <span v-if="nick === channel.admin" class="chip">správca</span>
+            <span v-if="nick === channel.admin">správca</span>
             <q-btn
               v-else-if="nick !== state.me && (isAdmin || !channel.private)"
               class="k-btn"
