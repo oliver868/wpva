@@ -172,11 +172,24 @@ async function testNotification() {
   }
   $q.notify('Prepni sa na inú kartu, o 5 sekúnd príde notifikácia')
   setTimeout(() => {
-    // $q.appVisible = Quasar plugin AppVisibility (je appka práve na obrazovke?)
+    if (!state.notifications) {
+      $q.notify('Notifikácie máš vypnuté, preto neprišla')
+      return
+    }
+    if (state.users[state.me].status === 'dnd') {
+      $q.notify('Máš stav Nerušiť, preto notifikácia neprišla')
+      return
+    }
+    if (state.users[state.me].status === 'offline') {
+      $q.notify('Si offline, preto notifikácia neprišla')
+      return
+    }
+
     if ($q.appVisible) {
       $q.notify('Appka je viditeľná, preto sa systémová notifikácia neukázala')
       return
     }
+    
     new Notification('@mara v #general', {
       body: '@dano pošleš mi potom link na repo?',
       icon: '/icons/kanale.svg'
