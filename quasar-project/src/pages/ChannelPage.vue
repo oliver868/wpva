@@ -149,6 +149,7 @@
         <MessageList
           :key="channel.name"
           :messages="channel.messages"
+          :fetch-older="() => loadOlderMessages(channel)"
           load-older
         />
 
@@ -232,13 +233,15 @@
 </template>
 
 <script setup>
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import {
   state,
   findChannel,
-  addMessage,
+  loadOlderMessages,
+  loadNewMessages,
+  sendChannelMessage,
   runCommand,
   channelInvitation,
   hasChannelInvitation,
@@ -361,6 +364,17 @@ watch(
   }
 )
 
+// nové správy od ostatných sa načítavajú každé 3 s (kým nie sú websockety)
+let messageTimer = null
+function pollMessages() {
+  const current = channel.value
+  if (current && current.members.includes(state.me)) loadNewMessages(current)
+}
+onMounted(() => {
+  messageTimer = window.setInterval(pollMessages, 3000)
+})
+onBeforeUnmount(() => window.clearInterval(messageTimer))
+
 function completeCommand(command) {
   input.value = command.name
   if (command.arguments) {
@@ -372,14 +386,18 @@ function completeCommand(command) {
   }
 }
 
-function send(text) {
+async function send(text) {
   input.value = ''
   if (!text.trim()) {
     return
   }
 
   if (!text.startsWith('/')) {
-    addMessage(channel.value.messages, text)
+    const result = await sendChannelMessage(channel.value, text.trim())
+    if (!result.success) {
+      $q.notify(result.message)
+      input.value = text // nech sa nestratí napísaný text
+    }
     return
   }
 
@@ -389,7 +407,7 @@ function send(text) {
     return
   }
 
-  const result = runCommand(text, channel.value)
+  const result = await runCommand(text, channel.value)
   if (result.message) $q.notify(result.message)
   if (result.goTo) {
     router.push(result.goTo)

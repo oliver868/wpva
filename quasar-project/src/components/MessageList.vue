@@ -23,17 +23,18 @@
 
       <div
         v-for="(message, index) in visibleMessages"
-        :key="firstVisibleIndex + index"
+        :key="message.id ?? firstVisibleIndex + index"
         class="message"
         :class="{
           mine: message.from === state.me,
-          mentioned: message.text.includes('@' + state.me)
+          mentioned: message.from !== state.me && mentionsMe(message.text)
         }"
       >
         <div
           class="message-head"
           :style="{
-            background: 'var(--' + state.users[message.from].color + ')'
+            background:
+              'var(--' + (state.users[message.from]?.color ?? 'lav') + ')'
           }"
         >
           <b>{{ message.from === state.me ? 'ty' : message.from }}</b>
@@ -51,23 +52,50 @@ import { state } from '@/stores/chat.js'
 
 const props = defineProps({
   messages: { type: Array, required: true },
-  loadOlder: { type: Boolean, default: false }
+  loadOlder: { type: Boolean, default: false },
+  // ak je zadané, staršie správy sa načítavajú zo servera (vráti, či sú ďalšie)
+  fetchOlder: { type: Function, default: null }
 })
 
 const box = ref(null)
 const scroller = ref(null)
 const pageSize = 20
 const firstVisibleIndex = ref(0)
-if (props.loadOlder && props.messages.length > pageSize) {
+if (!props.fetchOlder && props.loadOlder && props.messages.length > pageSize) {
   firstVisibleIndex.value = props.messages.length - pageSize
 }
 const visibleMessages = computed(() =>
   props.messages.slice(firstVisibleIndex.value)
 )
+const olderOnServer = ref(true)
 // všetky správy sú už zobrazené = začiatok histórie
-const historyEnd = computed(() => firstVisibleIndex.value === 0)
+const historyEnd = computed(() =>
+  props.fetchOlder ? !olderOnServer.value : firstVisibleIndex.value === 0
+)
 
-function onLoad(_index, done) {
+// správa je adresovaná mne, ak obsahuje @môjnick ako samostatné slovo
+// (@dan nezvýrazní správu pre @dano)
+function mentionsMe(text) {
+  return new RegExp(`(^|[^a-z0-9_-])@${state.me}(?![a-z0-9_-])`, 'i').test(text)
+}
+
+async function onLoad(index, done) {
+  if (props.fetchOlder) {
+    const countBefore = props.messages.length
+    olderOnServer.value = await props.fetchOlder()
+    if (!box.value) return // medzitým si odišiel z chatu
+    if (index === 1) scrollDown() // prvá strana: zobraz najnovšie správy
+    nextTick(() => {
+      done(historyEnd.value)
+      // ďalšiu stranu skús iba ak táto niečo pridala (pri chybe servera sa nezacyklí)
+      if (props.messages.length > countBefore) setTimeout(checkTop, 50)
+    })
+    return
+  }
+  loadLocalPage(done)
+}
+
+function loadLocalPage(done) {
   // krátke čakanie simuluje odpoveď servera, aby bolo vidno indikátor
   // (v 2. fáze sa nahradí volaním API)
   setTimeout(() => {
@@ -102,7 +130,11 @@ function scrollDown() {
   })
 }
 
-onMounted(scrollDown)
+onMounted(() => {
+  scrollDown()
+  // prázdny kanál zo servera: hneď načítaj prvú stranu
+  if (props.fetchOlder) nextTick(checkTop)
+})
 
 watch(() => props.messages[props.messages.length - 1], scrollDown)
 </script>

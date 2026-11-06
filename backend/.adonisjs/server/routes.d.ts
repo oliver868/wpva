@@ -11,6 +11,12 @@ export type ScannedRoutes = {
     'profile.sessions.destroy': { paramsTuple?: []; params?: {} }
     'channels.channels.index': { paramsTuple?: []; params?: {} }
     'channels.channels.store': { paramsTuple?: []; params?: {} }
+    'channels.channels.join': { paramsTuple?: []; params?: {} }
+    'channels.channels.invite': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'channels.channels.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'channels.channels.kick': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'channels.channels.messages': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'channels.channels.send_message': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'channels.channels.leave': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'channels.channels.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'channels.channels.update_visibility': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -20,17 +26,24 @@ export type ScannedRoutes = {
     'auth.sessions.csrf': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
     'channels.channels.index': { paramsTuple?: []; params?: {} }
+    'channels.channels.messages': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   HEAD: {
     'auth.sessions.csrf': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
     'channels.channels.index': { paramsTuple?: []; params?: {} }
+    'channels.channels.messages': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
   }
   POST: {
     'auth.new_account.store': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'profile.sessions.destroy': { paramsTuple?: []; params?: {} }
     'channels.channels.store': { paramsTuple?: []; params?: {} }
+    'channels.channels.join': { paramsTuple?: []; params?: {} }
+    'channels.channels.invite': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'channels.channels.revoke': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'channels.channels.kick': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'channels.channels.send_message': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'channels.channels.leave': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'channels.channels.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'channels.channels.update_visibility': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

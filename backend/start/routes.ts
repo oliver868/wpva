@@ -41,6 +41,12 @@ router
       .group(() => {
         router.get('/', [ChannelsController, 'index'])
         router.post('/', [ChannelsController, 'store'])
+        router.post('join', [ChannelsController, 'join'])
+        router.post(':id/invite', [ChannelsController, 'invite'])
+        router.post(':id/revoke', [ChannelsController, 'revoke'])
+        router.post(':id/kick', [ChannelsController, 'kick'])
+        router.get(':id/messages', [ChannelsController, 'messages'])
+        router.post(':id/messages', [ChannelsController, 'sendMessage'])
         router.post(':id/leave', [ChannelsController, 'leave'])
         router.post(':id/delete', [ChannelsController, 'destroy'])
         router.post(':id/visibility', [ChannelsController, 'updateVisibility'])

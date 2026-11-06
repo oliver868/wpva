@@ -50,6 +50,42 @@ const routes = {
     tokens: [[0,"api"],[0,"v1"],[0,"channels"]],
     types: placeholder as Registry['channels.channels.store']['types'],
   },
+  'channels.channels.join': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/join',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[0,"join"]],
+    types: placeholder as Registry['channels.channels.join']['types'],
+  },
+  'channels.channels.invite': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/invite',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"invite"]],
+    types: placeholder as Registry['channels.channels.invite']['types'],
+  },
+  'channels.channels.revoke': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/revoke',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"revoke"]],
+    types: placeholder as Registry['channels.channels.revoke']['types'],
+  },
+  'channels.channels.kick': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/kick',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"kick"]],
+    types: placeholder as Registry['channels.channels.kick']['types'],
+  },
+  'channels.channels.messages': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/channels/:id/messages',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"messages"]],
+    types: placeholder as Registry['channels.channels.messages']['types'],
+  },
+  'channels.channels.send_message': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/messages',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"messages"]],
+    types: placeholder as Registry['channels.channels.send_message']['types'],
+  },
   'channels.channels.leave': {
     methods: ["POST"],
     pattern: '/api/v1/channels/:id/leave',

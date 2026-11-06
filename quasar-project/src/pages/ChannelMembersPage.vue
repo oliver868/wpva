@@ -285,10 +285,10 @@ const memberAction = computed(() => {
   }
 })
 
-function run(command) {
+async function run(command) {
   if (!isMember.value) return
-  const result = runCommand(command, channel.value)
-  $q.notify(result.message)
+  const result = await runCommand(command, channel.value)
+  if (result.message) $q.notify(result.message)
 }
 
 function invite() {
