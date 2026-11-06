@@ -2,11 +2,11 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { state } from './chat.js'
+import { post, request, serverError } from './api.js'
 
 export const signedIn = ref(false)
 
 const accountContexts = new Map()
-const serverError = 'Pripojenie k serveru zlyhalo. Skús to znova.'
 const registrationFieldErrors = new Map([
   ['firstName', 'Skontroluj meno. Môže mať najviac 100 znakov.'],
   ['lastName', 'Skontroluj priezvisko. Môže mať najviac 100 znakov.'],
@@ -16,30 +16,6 @@ const registrationFieldErrors = new Map([
 ])
 let activeAccountId
 let sessionRequest
-
-async function request(path, options = {}) {
-  const response = await fetch(`/api/v1/${path}`, {
-    ...options,
-    headers: { Accept: 'application/json', ...options.headers },
-    cache: 'no-store'
-  })
-  const body = response.status === 204 ? null : await response.json()
-  return { status: response.status, body }
-}
-
-async function post(path, data) {
-  const csrf = await request('auth/csrf')
-  if (csrf.status !== 200 || !csrf.body?.token) throw new Error(serverError)
-
-  return request(path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrf.body.token
-    },
-    body: JSON.stringify(data)
-  })
-}
 
 function activateAccount(user) {
   const nick = user.nick ?? `account:${user.id}`

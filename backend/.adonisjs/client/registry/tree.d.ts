@@ -19,4 +19,14 @@ export interface ApiDefinition {
       destroy: typeof routes['profile.sessions.destroy']
     }
   }
+  channels: {
+    channels: {
+      index: typeof routes['channels.channels.index']
+      store: typeof routes['channels.channels.store']
+      leave: typeof routes['channels.channels.leave']
+      destroy: typeof routes['channels.channels.destroy']
+      updateVisibility: typeof routes['channels.channels.update_visibility']
+      respondToInvitation: typeof routes['channels.channels.respond_to_invitation']
+    }
+  }
 }

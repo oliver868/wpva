@@ -4,6 +4,7 @@
  */
 
 export const controllers = {
+  Channels: () => import('#controllers/channels_controller'),
   NewAccount: () => import('#controllers/new_account_controller'),
   Profile: () => import('#controllers/profile_controller'),
   Sessions: () => import('#controllers/sessions_controller'),

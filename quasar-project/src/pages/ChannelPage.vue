@@ -1,51 +1,18 @@
 <template>
   <q-page class="sheet" :style-fn="() => ({})">
-    <div v-if="!channel && closed" class="empty channel-access">
-      <q-icon name="history_toggle_off" size="44px" aria-hidden="true" />
-      <h2>Kanál #{{ closed.name }} zanikol</h2>
-      <p v-if="closed.reason === 'inactive'">
-        Viac ako 30 dní v ňom nepribudla žiadna správa, preto automaticky
-        zanikol ({{ closed.date }}). Jeho história už nie je dostupná.
-      </p>
-      <p v-else>
-        Zrušil ho správca @{{ closed.by }} ({{ closed.date }}). Jeho história už
-        nie je dostupná.
-      </p>
-      <p>Názov #{{ closed.name }} je znova voľný, môžeš založiť nový kanál.</p>
-      <q-btn
-        class="k-btn yellow"
-        unelevated
-        no-caps
-        :label="'Založiť nový #' + closed.name"
-        @click="send('/join ' + closed.name)"
-      />
-      <q-btn
-        class="k-btn"
-        unelevated
-        no-caps
-        label="Späť do prehľadu"
-        to="/home"
-      />
-    </div>
-
-    <div v-else-if="!channel" class="empty channel-access">
-      <q-icon name="travel_explore" size="44px" aria-hidden="true" />
-      <h2>Kanál #{{ $route.params.name }} neexistuje</h2>
-      <p>Taký kanál zatiaľ nikto nevytvoril. Môžeš ho založiť ako prvý.</p>
-      <q-btn
-        class="k-btn yellow"
-        unelevated
-        no-caps
-        :label="'Vytvoriť cez /join ' + $route.params.name"
-        @click="send('/join ' + $route.params.name)"
-      />
-      <q-btn
-        class="k-btn"
-        unelevated
-        no-caps
-        label="Späť do prehľadu"
-        to="/home"
-      />
+    <div v-if="!channel" class="empty channel-access">
+      <p v-if="state.channelsLoading" role="status">Načítavam kanál…</p>
+      <template v-else>
+        <q-icon name="travel_explore" size="44px" aria-hidden="true" />
+        <h2>{{ state.channelsError || 'Kanál nie je dostupný' }}</h2>
+        <q-btn
+          class="k-btn"
+          unelevated
+          no-caps
+          label="Späť do prehľadu"
+          to="/home"
+        />
+      </template>
     </div>
 
     <div
@@ -77,7 +44,6 @@
           {{ channel.private ? 'súkromného' : 'verejného' }} kanála</p
         >
         <h2>#{{ channel.name }}</h2>
-        <p>{{ channel.members.length }} členov</p>
         <p
           >Prijatím pozvánky získaš prístup k správam a môžeš sa zapojiť do
           konverzácie.</p
@@ -302,9 +268,6 @@ const channelMembers = computed(() => {
   }
   return members
 })
-const closed = computed(() =>
-  state.closedChannels.find(item => item.name === route.params.name)
-)
 const input = ref('')
 // na mobile (do 700 px) sú členovia predvolene skrytí, otvoria sa tlačidlom
 const showMembers = ref($q.screen.width > 700)
@@ -427,7 +390,7 @@ function send(text) {
   }
 
   const result = runCommand(text, channel.value)
-  $q.notify(result.message)
+  if (result.message) $q.notify(result.message)
   if (result.goTo) {
     router.push(result.goTo)
   }
@@ -436,14 +399,14 @@ function send(text) {
   }
 }
 
-function accept() {
-  const result = acceptChannelInvitation(channel.value)
-  $q.notify(result.message)
+async function accept() {
+  const result = await acceptChannelInvitation(channel.value)
+  if (result.message) $q.notify(result.message)
 }
 
-function decline() {
-  const result = declineChannelInvitation(channel.value)
-  $q.notify(result.message)
+async function decline() {
+  const result = await declineChannelInvitation(channel.value)
+  if (result.message) $q.notify(result.message)
   if (result.success) {
     router.push('/home')
   }

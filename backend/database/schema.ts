@@ -32,6 +32,45 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class ChannelInvitationSchema extends BaseModel {
+  static $columns = ['channelId', 'invitedBy', 'userId'] as const
+  $columns = ChannelInvitationSchema.$columns
+  @column({ isPrimary: true })
+  declare channelId: number
+  @column()
+  declare invitedBy: number
+  @column()
+  declare userId: number
+}
+
+export class ChannelMembershipSchema extends BaseModel {
+  static $columns = ['channelId', 'isBanned', 'userId'] as const
+  $columns = ChannelMembershipSchema.$columns
+  @column({ isPrimary: true })
+  declare channelId: number
+  @column()
+  declare isBanned: boolean
+  @column()
+  declare userId: number
+}
+
+export class ChannelSchema extends BaseModel {
+  static $columns = ['id', 'isPrivate', 'lastActivityAt', 'name', 'ownerId', 'serverName'] as const
+  $columns = ChannelSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare isPrivate: boolean
+  @column.dateTime()
+  declare lastActivityAt: DateTime
+  @column()
+  declare name: string
+  @column()
+  declare ownerId: number
+  @column()
+  declare serverName: string | null
+}
+
 export class SessionSchema extends BaseModel {
   static $columns = ['data', 'expiresAt', 'id', 'userId'] as const
   $columns = SessionSchema.$columns

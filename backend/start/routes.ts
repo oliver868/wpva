@@ -11,6 +11,8 @@ import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 
+const ChannelsController = () => import('#controllers/channels_controller')
+
 router.get('/', () => {
   return { hello: 'world' }
 })
@@ -33,6 +35,20 @@ router
       })
       .prefix('account')
       .as('profile')
+      .use(middleware.auth())
+
+    router
+      .group(() => {
+        router.get('/', [ChannelsController, 'index'])
+        router.post('/', [ChannelsController, 'store'])
+        router.post(':id/leave', [ChannelsController, 'leave'])
+        router.post(':id/delete', [ChannelsController, 'destroy'])
+        router.post(':id/visibility', [ChannelsController, 'updateVisibility'])
+        router.post(':id/invitation', [ChannelsController, 'respondToInvitation'])
+      })
+      .where('id', router.matchers.number())
+      .prefix('channels')
+      .as('channels')
       .use(middleware.auth())
   })
   .prefix('/api/v1')

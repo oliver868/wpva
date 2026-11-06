@@ -38,6 +38,42 @@ const routes = {
     tokens: [[0,"api"],[0,"v1"],[0,"account"],[0,"logout"]],
     types: placeholder as Registry['profile.sessions.destroy']['types'],
   },
+  'channels.channels.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/channels',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"]],
+    types: placeholder as Registry['channels.channels.index']['types'],
+  },
+  'channels.channels.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"]],
+    types: placeholder as Registry['channels.channels.store']['types'],
+  },
+  'channels.channels.leave': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/leave',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"leave"]],
+    types: placeholder as Registry['channels.channels.leave']['types'],
+  },
+  'channels.channels.destroy': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/delete',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"delete"]],
+    types: placeholder as Registry['channels.channels.destroy']['types'],
+  },
+  'channels.channels.update_visibility': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/visibility',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"visibility"]],
+    types: placeholder as Registry['channels.channels.update_visibility']['types'],
+  },
+  'channels.channels.respond_to_invitation': {
+    methods: ["POST"],
+    pattern: '/api/v1/channels/:id/invitation',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"invitation"]],
+    types: placeholder as Registry['channels.channels.respond_to_invitation']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }

@@ -5,7 +5,7 @@
         <div class="home-welcome-copy">
           <h1>Ahoj, {{ state.profile.firstName || state.me }}!</h1>
           <p
-            >Tu nájdeš svojich priateľov, servery aj kanály na jednom mieste.</p
+            >Tu nájdeš svoje kanály a priateľov.</p
           >
         </div>
         <q-btn
@@ -60,16 +60,16 @@
           aria-labelledby="servers-title"
         >
           <header class="home-section-heading pink-heading">
-            <h2 id="servers-title">Servery</h2>
-            <span class="chip">{{ serverGroups.length }}</span>
+            <h2 id="servers-title">Moje kanály</h2>
+            <span class="chip">{{ state.channels.length }}</span>
             <q-btn
               class="k-btn home-add-channel"
               unelevated
               dense
               no-caps
               icon="add"
-              label="Vytvoriť server"
-              @click="openCreateServer()"
+              label="Vytvoriť kanál"
+              @click="openCreate()"
             />
           </header>
 
@@ -84,7 +84,7 @@
                   class="home-server-name"
                   type="button"
                   :disabled="!server.channels.length"
-                  :aria-label="`Otvoriť server ${server.name}`"
+                  aria-label="Otvoriť prvý kanál"
                   @click="openChannel(server, server.channels[0]?.name)"
                 >
                   <span class="home-server-icon"
@@ -97,13 +97,12 @@
                   {{ channelWord(server.channels.length) }}
                 </span>
                 <q-btn
-                  v-if="isServerMember(server.name)"
                   flat
                   dense
                   round
                   icon="add"
-                  :aria-label="`Pridať kanál na server ${server.name}`"
-                  @click="openCreate(server.name)"
+                  :aria-label="`Vytvoriť kanál`"
+                  @click="openCreate()"
                 />
               </div>
 
@@ -136,12 +135,12 @@
                 </button>
               </div>
               <p v-else class="home-empty"
-                >V tomto serveri zatiaľ nie sú kanály.</p
+                >Zatiaľ tu nemáš žiadne kanály.</p
               >
             </article>
           </div>
           <p v-else class="home-empty home-section-empty"
-            >Zatiaľ nemáš žiadne servery.</p
+            >Zatiaľ nemáš žiadne kanály.</p
           >
         </section>
 
@@ -201,14 +200,12 @@ import {
   channelInvitation,
   hasChannelInvitation,
   visibleChannels,
-  visibleServers,
-  isServerMember
+  visibleServers
 } from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const router = useRouter()
 const openCreate = inject('openCreateChannel')
-const openCreateServer = inject('openCreateServer')
 
 const serverGroups = computed(() => {
   const groups = []

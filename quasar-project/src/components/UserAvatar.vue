@@ -3,10 +3,10 @@
   <span
     class="avatar"
     :class="{ small }"
-    :style="{ background: 'var(--' + state.users[nick].color + ')' }"
+    :style="{ background: 'var(--' + (state.users[nick]?.color ?? 'lav') + ')' }"
   >
     {{ nick.slice(0, 2).toUpperCase() }}
-    <i class="status" :class="state.users[nick].status" />
+    <i v-if="state.users[nick]" class="status" :class="state.users[nick].status" />
   </span>
 </template>
 
