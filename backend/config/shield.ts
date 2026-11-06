@@ -30,7 +30,7 @@ const shieldConfig = defineConfig({
     /**
      * Enable CSRF token verification for state-changing requests.
      */
-    enabled: false,
+    enabled: true,
 
     /**
      * Route patterns to exclude from CSRF checks.
@@ -39,9 +39,9 @@ const shieldConfig = defineConfig({
     exceptRoutes: [],
 
     /**
-     * Expose an encrypted XSRF-TOKEN cookie for frontend HTTP clients.
+     * The Quasar client reads its token from the auth/csrf endpoint.
      */
-    enableXsrfCookie: true,
+    enableXsrfCookie: false,
 
     /**
      * HTTP methods protected by CSRF validation.

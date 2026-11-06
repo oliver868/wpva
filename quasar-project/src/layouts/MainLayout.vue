@@ -240,9 +240,8 @@
                 <q-item
                   clickable
                   v-close-popup
-                  to="/login"
-                  replace
-                  @click="signedIn = false"
+                  :disable="signingOut"
+                  @click="signOut"
                 >
                   <q-item-section avatar
                     ><q-icon name="logout"
@@ -718,19 +717,13 @@ import {
   setChannelVisibility,
 } from "@/stores/chat.js";
 import UserAvatar from "@/components/UserAvatar.vue";
-import { signedIn } from "@/stores/auth.js";
+import { signedIn, useSignOut } from "@/stores/auth.js";
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const isAuthPage = computed(() => ["/login", "/register"].includes(route.path));
-watch(
-  isAuthPage,
-  (value) => {
-    if (value) signedIn.value = false;
-  },
-  { immediate: true },
-);
+const { signOut, signingOut } = useSignOut();
 
 const drawer = ref(false);
 const showCreate = ref(false);

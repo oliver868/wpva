@@ -131,9 +131,8 @@
           no-caps
           icon="logout"
           label="Odhlásiť sa"
-          to="/login"
-          replace
-          @click="signedIn = false"
+          :loading="signingOut"
+          @click="signOut"
         />
       </section>
     </div>
@@ -144,9 +143,10 @@
 import { computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { state } from '@/stores/chat.js'
-import { signedIn } from '@/stores/auth.js'
+import { useSignOut } from '@/stores/auth.js'
 
 const $q = useQuasar()
+const { signOut, signingOut } = useSignOut()
 
 // vysvetlenie, či a kedy notifikácia príde podľa nastavení a stavu
 const notificationHint = computed(() => {

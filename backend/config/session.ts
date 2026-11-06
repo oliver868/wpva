@@ -1,4 +1,3 @@
-import env from '#start/env'
 import app from '@adonisjs/core/services/app'
 import { defineConfig, stores } from '@adonisjs/session'
 
@@ -56,18 +55,13 @@ const sessionConfig = defineConfig({
    * variable in order to infer the store name without any
    * errors.
    */
-  store: env.get('SESSION_DRIVER'),
+  store: app.inTest ? 'memory' : 'database',
 
   /**
    * List of configured stores. Refer documentation to see
    * list of available stores and their config.
    */
   stores: {
-    /**
-     * Store session data inside encrypted cookies.
-     */
-    cookie: stores.cookie(),
-
     /**
      * Store session data inside the configured database.
      */

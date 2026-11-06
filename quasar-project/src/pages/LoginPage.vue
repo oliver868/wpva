@@ -49,6 +49,7 @@
         unelevated
         no-caps
         type="submit"
+        :loading="submitting"
         label="Prihlásiť sa"
       />
       <p
@@ -66,19 +67,21 @@ import { signIn } from '@/stores/auth.js'
 
 const router = useRouter()
 async function submit() {
-  if (!signIn(login.value, password.value)) {
-    loginError.value =
-      'Email, nick alebo heslo nie sú správne. Skontroluj údaje a skús to znova.'
+  if (submitting.value) return
+  submitting.value = true
+  loginError.value = await signIn(login.value, password.value) ?? ''
+  submitting.value = false
+  if (loginError.value) {
     await nextTick()
     errorBox.value?.focus()
     return
   }
-  loginError.value = ''
   router.push('/')
 }
 
-const login = ref('dan@fan.sk')
-const password = ref('heslo1234')
+const login = ref('')
+const password = ref('')
+const submitting = ref(false)
 const loginError = ref('')
 const errorBox = ref(null)
 </script>

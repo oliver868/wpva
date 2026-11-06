@@ -84,6 +84,7 @@
         unelevated
         no-caps
         type="submit"
+        :loading="submitting"
         label="Vytvoriť účet"
       />
       <p>Už máš účet? <router-link to="/login">Prihlás sa</router-link></p>
@@ -95,17 +96,20 @@
 import { nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthLayout from '@/layouts/AuthLayout.vue'
-import { emailTaken, nicknameTaken, registerUser } from '@/stores/auth.js'
+import { registerUser } from '@/stores/auth.js'
 
 const router = useRouter()
 async function submit() {
-  const error = registerUser({
+  if (submitting.value) return
+  submitting.value = true
+  const error = await registerUser({
     firstName: firstName.value,
     lastName: lastName.value,
     nick: nick.value,
     email: email.value,
     password: password.value
   })
+  submitting.value = false
   if (error) {
     registrationError.value = error
     await nextTick()
@@ -123,6 +127,7 @@ const lastName = ref('')
 const nick = ref('')
 const email = ref('')
 const password = ref('')
+const submitting = ref(false)
 const registrationError = ref('')
 const errorBox = ref(null)
 
@@ -138,8 +143,7 @@ function validateNick(value) {
   if (!normalized) return 'Zadaj nick.'
   if (!/^[a-zA-Z0-9_-]+$/.test(normalized))
     return 'Použi nick bez medzier a diakritiky. Povolené sú aj čísla, pomlčka a podčiarkovník.'
-  if (nicknameTaken(normalized))
-    return 'Tento nick je už obsadený. Vyber si iný.'
+  if (normalized.length > 32) return 'Nick môže mať najviac 32 znakov.'
   return true
 }
 
@@ -149,8 +153,6 @@ function validateEmail(value) {
   if (!validEmail) {
     return 'Zadaj platný email, napríklad meno@example.sk.'
   }
-  if (emailTaken(value))
-    return 'Tento email už má účet. Prihlás sa alebo použi iný email.'
   return true
 }
 

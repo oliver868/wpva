@@ -62,6 +62,9 @@ export default defineConfig((/* ctx */) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
+      proxy: {
+        '/api': 'http://localhost:3333'
+      },
       // vueDevtools: true,
       // https: true,
       open: true // opens browser window automatically
