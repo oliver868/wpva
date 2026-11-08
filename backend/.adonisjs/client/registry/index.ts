@@ -56,6 +56,12 @@ const routes = {
     tokens: [[0,"api"],[0,"v1"],[0,"channels"],[0,"join"]],
     types: placeholder as Registry['channels.channels.join']['types'],
   },
+  'channels.channels.invitees': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/channels/:id/invitees',
+    tokens: [[0,"api"],[0,"v1"],[0,"channels"],[1,"id"],[0,"invitees"]],
+    types: placeholder as Registry['channels.channels.invitees']['types'],
+  },
   'channels.channels.invite': {
     methods: ["POST"],
     pattern: '/api/v1/channels/:id/invite',

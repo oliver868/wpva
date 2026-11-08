@@ -112,6 +112,19 @@ export interface Registry {
       rawResponse: ExtractRawResponse<Awaited<ReturnType<import('#controllers/channels_controller').default['join']>>>
     }
   }
+  'channels.channels.invitees': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/channels/:id/invitees'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/channels_controller').default['invitees']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/channels_controller').default['invitees']>>>
+      rawResponse: ExtractRawResponse<Awaited<ReturnType<import('#controllers/channels_controller').default['invitees']>>>
+    }
+  }
   'channels.channels.invite': {
     methods: ["POST"]
     pattern: '/api/v1/channels/:id/invite'

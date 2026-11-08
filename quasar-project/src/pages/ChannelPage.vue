@@ -395,7 +395,7 @@ async function send(text) {
   if (!text.startsWith('/')) {
     const result = await sendChannelMessage(channel.value, text.trim())
     if (!result.success) {
-      $q.notify(result.message)
+      if (result.message) $q.notify(result.message)
       input.value = text // nech sa nestratí napísaný text
     }
     return

@@ -41,9 +41,13 @@
               borderless
               label="Používateľ"
               :options="inviteOptions"
+              use-input
+              input-debounce="300"
+              :loading="loadingInvitees"
+              @filter="filterInvitees"
               emit-value
               map-options
-              :disable="!inviteOptions.length"
+              :disable="!canInvite"
             />
             <q-btn
               class="k-btn yellow"
@@ -53,10 +57,12 @@
               label="Pozvať"
               type="submit"
               :disable="!selectedNick"
+              :loading="inviting"
             />
           </q-form>
-          <p v-if="!inviteOptions.length" class="hint"
-            >Všetci dostupní používatelia sú už členmi alebo majú pozvánku.</p
+          <p v-if="inviteesError" class="hint" role="status">{{ inviteesError }}</p>
+          <p v-else-if="!loadingInvitees && !inviteOptions.length" class="hint"
+            >Nenašli sa používatelia na pozvanie. Skús zadať nick.</p
           >
         </template>
       </section>
@@ -211,10 +217,16 @@ import {
   hasChannelInvitation
 } from '@/stores/chat.js'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { request } from '@/stores/api.js'
 
 const route = useRoute()
 const $q = useQuasar()
 const selectedNick = ref(null)
+const inviteOptions = ref([])
+const loadingInvitees = ref(false)
+const inviteesError = ref('')
+const inviting = ref(false)
+let inviteSearch = 0
 const pendingNick = ref('')
 watch(
   () => route.params.name,
@@ -240,28 +252,38 @@ const isAdmin = computed(() => channel.value?.admin === state.me)
 const canInvite = computed(
   () => isMember.value && (!channel.value.private || isAdmin.value)
 )
-const inviteOptions = computed(() => {
-  const options = []
-  for (const nick of Object.keys(state.users)) {
-    if (channel.value) {
-      if (channel.value.members.includes(nick)) {
-        continue
-      }
-      if (channel.value.banned.includes(nick)) {
-        continue
-      }
-    }
-    if (hasChannelInvitation(channel.value, nick)) {
-      continue
-    }
-
-    options.push({
-      label: '@' + nick + ' ' + state.users[nick].name,
-      value: nick
-    })
+async function filterInvitees(value = '', update = callback => callback()) {
+  const search = ++inviteSearch
+  const id = channel.value?.id
+  if (!canInvite.value) {
+    update(() => { inviteOptions.value = [] })
+    return
   }
-  return options
-})
+  loadingInvitees.value = true
+  inviteesError.value = ''
+  try {
+    const { status, body } = await request(
+      `channels/${id}/invitees?q=${encodeURIComponent(value.replace(/^@/, ''))}`
+    )
+    if (search !== inviteSearch || id !== channel.value?.id) return
+    if (status !== 200) throw new Error()
+    update(() => {
+      inviteOptions.value = body.data.map(user => ({
+        label: ['@' + user.nick, user.name].filter(Boolean).join(' '),
+        value: user.nick
+      }))
+    })
+  } catch {
+    if (search === inviteSearch) {
+      inviteesError.value = 'Používateľov sa nepodarilo načítať. Skús to znova.'
+      update(() => { inviteOptions.value = [] })
+    }
+  } finally {
+    if (search === inviteSearch) loadingInvitees.value = false
+  }
+}
+
+watch([() => channel.value?.id, canInvite], () => filterInvitees(), { immediate: true })
 
 const memberAction = computed(() => {
   if (channel.value?.private) {
@@ -289,12 +311,21 @@ async function run(command) {
   if (!isMember.value) return
   const result = await runCommand(command, channel.value)
   if (result.message) $q.notify(result.message)
+  return result
 }
 
-function invite() {
-  if (!selectedNick.value || !canInvite.value) return
-  run('/invite ' + selectedNick.value)
-  selectedNick.value = null
+async function invite() {
+  if (!selectedNick.value || !canInvite.value || inviting.value) return
+  inviting.value = true
+  try {
+    const result = await run('/invite ' + selectedNick.value)
+    if (result?.success) {
+      selectedNick.value = null
+      await filterInvitees()
+    }
+  } finally {
+    inviting.value = false
+  }
 }
 
 function removeMember() {

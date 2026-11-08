@@ -14,6 +14,7 @@ const createChannel = vine.create({ name: name(), private: vine.boolean() })
 const joinChannel = vine.create({ name: name(), private: vine.boolean().optional() })
 const setVisibility = vine.create({ private: vine.boolean() })
 const invitationDecision = vine.create({ accept: vine.boolean() })
+const inviteeSearch = vine.create({ q: vine.string().trim().maxLength(100).optional() })
 const targetUser = vine.create({
   nick: vine
     .string()
@@ -41,6 +42,46 @@ function positiveId(value: unknown) {
 type Outcome = { status: number; message?: string }
 
 export default class ChannelsController {
+  async invitees({ auth, params, request, response }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const { q } = await request.validateUsing(inviteeSearch)
+    const channel = await db
+      .from('channels')
+      .join('channel_memberships as member', 'member.channel_id', 'channels.id')
+      .where('channels.id', params.id)
+      .where({ 'member.user_id': user.id, 'member.is_banned': false })
+      .where('channels.last_activity_at', '>=', inactivityCutoff())
+      .select('channels.owner_id', 'channels.is_private')
+      .first()
+    if (!channel || (channel.is_private && channel.owner_id !== user.id)) {
+      return response.forbidden({ message: 'Do tohto kanála nemôžeš pozývať.' })
+    }
+
+    const users = await db
+      .from('users as candidate')
+      .whereNotNull('candidate.nick')
+      .whereILike('candidate.nick', `%${q ?? ''}%`)
+      .whereNotExists((query) => {
+        query
+          .from('channel_memberships as member')
+          .whereColumn('member.user_id', 'candidate.id')
+          .where('member.channel_id', params.id)
+        if (channel.owner_id === user.id) query.where('member.is_banned', false)
+      })
+      .whereNotExists((query) => {
+        query
+          .from('channel_invitations as invitation')
+          .whereColumn('invitation.user_id', 'candidate.id')
+          .where('invitation.channel_id', params.id)
+      })
+      .select('candidate.nick', 'candidate.full_name as name')
+      .orderBy('candidate.nick')
+      .limit(50)
+
+    response.header('Cache-Control', 'no-store')
+    return { data: users }
+  }
+
   async index({ auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
     const cutoff = inactivityCutoff()
@@ -180,7 +221,8 @@ export default class ChannelsController {
       return { status: 200 }
     })
 
-    if (outcome.status >= 400) return response.status(outcome.status).send({ message: outcome.message })
+    if (outcome.status >= 400)
+      return response.status(outcome.status).send({ message: outcome.message })
     return response.status(outcome.status).send({ data: { name: payload.name } })
   }
 
@@ -188,7 +230,8 @@ export default class ChannelsController {
   // správca pozvánkou zároveň obnoví prístup zabanovanému používateľovi
   async invite({ auth, params, request, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const nick = (await request.validateUsing(targetUser)).nick.replace(/^@/, '')
+    const targetPayload = await request.validateUsing(targetUser)
+    const nick = targetPayload.nick.replace(/^@/, '')
     const outcome = await db.transaction(async (trx): Promise<Outcome> => {
       const channel = await trx
         .from('channels')
@@ -230,18 +273,21 @@ export default class ChannelsController {
         .onConflict(['channel_id', 'user_id'])
         .ignore()
         .returning('user_id')
-      if (!invited.length) return { status: 409, message: `@${nick} už má pozvánku do tohto kanála.` }
+      if (!invited.length)
+        return { status: 409, message: `@${nick} už má pozvánku do tohto kanála.` }
       return { status: 204 }
     })
 
-    if (outcome.status >= 400) return response.status(outcome.status).send({ message: outcome.message })
+    if (outcome.status >= 400)
+      return response.status(outcome.status).send({ message: outcome.message })
     return response.noContent()
   }
 
   // /revoke nick: správca súkromného kanála odoberie člena (alebo zruší jeho pozvánku)
   async revoke({ auth, params, request, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const nick = (await request.validateUsing(targetUser)).nick.replace(/^@/, '')
+    const targetPayload = await request.validateUsing(targetUser)
+    const nick = targetPayload.nick.replace(/^@/, '')
     const outcome = await db.transaction(async (trx): Promise<Outcome> => {
       const channel = await trx
         .from('channels')
@@ -250,7 +296,8 @@ export default class ChannelsController {
         .forUpdate()
         .first()
       if (!channel) return { status: 404, message: 'Kanál už neexistuje.' }
-      if (channel.owner_id !== user.id) return { status: 403, message: 'Odoberať môže iba správca.' }
+      if (channel.owner_id !== user.id)
+        return { status: 403, message: 'Odoberať môže iba správca.' }
       if (!channel.is_private) {
         return { status: 400, message: 'Vo verejnom kanáli použi /kick nick.' }
       }
@@ -267,14 +314,19 @@ export default class ChannelsController {
         .where({ ...key, is_banned: false })
         .delete()
         .returning('user_id')
-      const withdrawn = await trx.from('channel_invitations').where(key).delete().returning('user_id')
+      const withdrawn = await trx
+        .from('channel_invitations')
+        .where(key)
+        .delete()
+        .returning('user_id')
       if (!removed.length && !withdrawn.length) {
         return { status: 404, message: `@${nick} nie je členom tohto kanála.` }
       }
       return { status: 204 }
     })
 
-    if (outcome.status >= 400) return response.status(outcome.status).send({ message: outcome.message })
+    if (outcome.status >= 400)
+      return response.status(outcome.status).send({ message: outcome.message })
     return response.noContent()
   }
 
@@ -282,7 +334,8 @@ export default class ChannelsController {
   // pri 3 hlasoch má používateľ trvalý ban (is_banned v channel_memberships)
   async kick({ auth, params, request, response }: HttpContext) {
     const user = auth.getUserOrFail()
-    const nick = (await request.validateUsing(targetUser)).nick.replace(/^@/, '')
+    const targetPayload = await request.validateUsing(targetUser)
+    const nick = targetPayload.nick.replace(/^@/, '')
     const outcome = await db.transaction(async (trx): Promise<Outcome> => {
       const channel = await trx
         .from('channels')
@@ -291,7 +344,8 @@ export default class ChannelsController {
         .forUpdate()
         .first()
       if (!channel) return { status: 404, message: 'Kanál už neexistuje.' }
-      if (channel.is_private) return { status: 400, message: 'V súkromnom kanáli použi /revoke nick.' }
+      if (channel.is_private)
+        return { status: 400, message: 'V súkromnom kanáli použi /revoke nick.' }
 
       const isMember = await trx
         .from('channel_memberships')
@@ -342,7 +396,10 @@ export default class ChannelsController {
 
       await trx.from('channel_memberships').where(key).update({ is_banned: true })
       await trx.from('channel_invitations').where(key).delete()
-      await trx.from('channel_kick_votes').where({ channel_id: channel.id, target_id: target.id }).delete()
+      await trx
+        .from('channel_kick_votes')
+        .where({ channel_id: channel.id, target_id: target.id })
+        .delete()
       return { status: 200, message: `@${nick} má trvalý ban v #${channel.name}.` }
     })
 
@@ -367,7 +424,13 @@ export default class ChannelsController {
       .from('messages as message')
       .join('users as author', 'author.id', 'message.user_id')
       .where('message.channel_id', params.id)
-      .select('message.id', 'message.text', 'message.created_at', 'author.nick', 'author.id as author_id')
+      .select(
+        'message.id',
+        'message.text',
+        'message.created_at',
+        'author.nick',
+        'author.id as author_id'
+      )
 
     const after = positiveId(request.input('after'))
     const before = positiveId(request.input('before'))

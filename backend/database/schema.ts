@@ -43,6 +43,17 @@ export class ChannelInvitationSchema extends BaseModel {
   declare userId: number
 }
 
+export class ChannelKickVoteSchema extends BaseModel {
+  static $columns = ['channelId', 'targetId', 'voterId'] as const
+  $columns = ChannelKickVoteSchema.$columns
+  @column({ isPrimary: true })
+  declare channelId: number
+  @column()
+  declare targetId: number
+  @column()
+  declare voterId: number
+}
+
 export class ChannelMembershipSchema extends BaseModel {
   static $columns = ['channelId', 'isBanned', 'userId'] as const
   $columns = ChannelMembershipSchema.$columns
@@ -69,6 +80,21 @@ export class ChannelSchema extends BaseModel {
   declare ownerId: number
   @column()
   declare serverName: string | null
+}
+
+export class MessageSchema extends BaseModel {
+  static $columns = ['channelId', 'createdAt', 'id', 'text', 'userId'] as const
+  $columns = MessageSchema.$columns
+  @column()
+  declare channelId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare text: string
+  @column()
+  declare userId: number
 }
 
 export class SessionSchema extends BaseModel {

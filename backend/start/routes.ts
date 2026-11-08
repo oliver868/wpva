@@ -42,6 +42,7 @@ router
         router.get('/', [ChannelsController, 'index'])
         router.post('/', [ChannelsController, 'store'])
         router.post('join', [ChannelsController, 'join'])
+        router.get(':id/invitees', [ChannelsController, 'invitees'])
         router.post(':id/invite', [ChannelsController, 'invite'])
         router.post(':id/revoke', [ChannelsController, 'revoke'])
         router.post(':id/kick', [ChannelsController, 'kick'])

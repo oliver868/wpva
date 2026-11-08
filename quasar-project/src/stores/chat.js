@@ -18,7 +18,10 @@ let channelSession = 0
 const histories = new Map()
 function historyOf(channelId) {
   if (!histories.has(channelId)) {
-    histories.set(channelId, reactive({ messages: [], hasOlder: true, loading: false }))
+    histories.set(channelId, reactive({
+      messages: [], hasOlder: true, loading: false, loadingNew: false,
+      initialized: false, newestFetchedId: 0
+    }))
   }
   return histories.get(channelId)
 }
@@ -163,8 +166,12 @@ function toMessage(message) {
 function appendMessages(history, messages) {
   const known = new Set(history.messages.map(message => message.id))
   for (const message of messages) {
-    if (!known.has(message.id)) history.messages.push(toMessage(message))
+    if (!known.has(message.id)) {
+      history.messages.push(toMessage(message))
+      known.add(message.id)
+    }
   }
+  history.messages.sort((a, b) => a.id - b.id)
 }
 
 // staršie správy pre infinite scroll; vráti, či na serveri ešte nejaké sú
@@ -173,12 +180,16 @@ export async function loadOlderMessages(channel) {
   if (!history.hasOlder || history.loading) return history.hasOlder
   history.loading = true
   try {
-    const oldest = history.messages[0]?.id
+    const oldest = history.initialized ? history.messages[0]?.id : undefined
     const { status, body } = await request(
       `channels/${channel.id}/messages` + (oldest ? `?before=${oldest}` : '')
     )
-    if (status !== 200) return history.hasOlder
-    history.messages.unshift(...body.data.map(toMessage))
+    if (status !== 200 || histories.get(channel.id) !== history) return history.hasOlder
+    appendMessages(history, body.data)
+    if (!history.initialized) {
+      history.newestFetchedId = body.data.at(-1)?.id ?? 0
+      history.initialized = true
+    }
     history.hasOlder = body.hasMore
     return history.hasOlder
   } catch {
@@ -192,21 +203,32 @@ export async function loadOlderMessages(channel) {
 export async function loadNewMessages(channel) {
   const history = historyOf(channel.id)
   // kým sa nenačíta prvá strana, nové správy nemajú na čo nadviazať
-  if (history.loading || (!history.messages.length && history.hasOlder)) return
-  const newest = history.messages[history.messages.length - 1]?.id ?? 0
+  if (!history.initialized || history.loadingNew) return
+  history.loadingNew = true
   try {
-    const { status, body } = await request(`channels/${channel.id}/messages?after=${newest}`)
-    if (status === 200) appendMessages(history, body.data)
+    // Kurzor posúva iba načítanie zoznamu, nikdy samotné odoslanie správy.
+    const { status, body } = await request(
+      `channels/${channel.id}/messages?after=${history.newestFetchedId}`
+    )
+    if (status === 200 && histories.get(channel.id) === history) {
+      appendMessages(history, body.data)
+      history.newestFetchedId = body.data.at(-1)?.id ?? history.newestFetchedId
+    }
   } catch {
     // skúsi sa znova pri ďalšom obnovení
+  } finally {
+    history.loadingNew = false
   }
 }
 
 export async function sendChannelMessage(channel, text) {
+  const history = historyOf(channel.id)
   try {
     const { status, body } = await post(`channels/${channel.id}/messages`, { text })
     if (status !== 201) return { success: false, message: body?.message ?? serverError }
-    appendMessages(historyOf(channel.id), [body.data])
+    if (histories.get(channel.id) !== history) return { success: false }
+    if (history.initialized) appendMessages(history, [body.data])
+    else await loadOlderMessages(channel)
     return { success: true }
   } catch {
     return { success: false, message: serverError }
