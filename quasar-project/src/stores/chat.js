@@ -19,8 +19,12 @@ const histories = new Map()
 function historyOf(channelId) {
   if (!histories.has(channelId)) {
     histories.set(channelId, reactive({
-      messages: [], hasOlder: true, loading: false, loadingNew: false,
-      initialized: false, newestFetchedId: 0
+      messages: [],
+      hasOlder: true,
+      loading: false,
+      loadingNew: false,
+      initialized: false,
+      newestFetchedId: 0
     }))
   }
   return histories.get(channelId)
@@ -113,7 +117,7 @@ async function changeChannel(path, payload, successMessage, goTo) {
   try {
     const { status, body } = await post(path, payload)
     if (session !== channelSession) return { success: false }
-    if (status === 200 || status === 201 || status === 204) {
+    if ([200, 201, 204].includes(status)) {
       await refreshChannels()
       if (session !== channelSession) return { success: false }
       // správa môže závisieť od odpovede (napr. /join: vytvorený = 201, pripojený = 200)
@@ -135,9 +139,12 @@ export function createChannel(name, isPrivate) {
 }
 
 export function exitChannel(channel, destroy) {
+  const action = destroy ? 'delete' : 'leave'
   const deletesChannel = destroy || channel.admin === state.me
-  return changeChannel(`channels/${channel.id}/${destroy ? 'delete' : 'leave'}`, {},
-    deletesChannel ? `Kanál #${channel.name} je zrušený.` : `Opustil si #${channel.name}.`, '/home')
+  const message = deletesChannel
+    ? `Kanál #${channel.name} je zrušený.`
+    : `Opustil si #${channel.name}.`
+  return changeChannel(`channels/${channel.id}/${action}`, {}, message, '/home')
 }
 
 export function setChannelVisibility(channel, isPrivate) {
@@ -154,11 +161,13 @@ export function declineChannelInvitation(channel) {
     `Odmietol si pozvánku do #${channel.name}.`)
 }
 
+// čas správy vo formáte 14:05
+function formatTime(date) {
+  return date.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
+}
+
 function toMessage(message) {
-  const time = new Date(message.createdAt).toLocaleTimeString('sk-SK', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  const time = formatTime(new Date(message.createdAt))
   return { id: message.id, from: message.from, text: message.text, time }
 }
 
@@ -236,11 +245,7 @@ export async function sendChannelMessage(channel, text) {
 }
 
 export function addMessage(messages, text) {
-  const time = new Date().toLocaleTimeString('sk-SK', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-  messages.push({ from: state.me, text, time })
+  messages.push({ from: state.me, text, time: formatTime(new Date()) })
 }
 
 export function joinChannel(name, isPrivate) {
@@ -263,6 +268,9 @@ export function kickFromChannel(channel, nick) {
   return changeChannel(`channels/${channel.id}/kick`, { nick }, (_, body) => body?.message)
 }
 
+// malé písmená, čísla a pomlčky medzi nimi (napr. vpwa-tim)
+const channelNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
 export async function runCommand(text, channel) {
   const [command, argument, option, ...rest] = text.trim().split(/\s+/)
 
@@ -273,7 +281,7 @@ export async function runCommand(text, channel) {
     if (!name || rest.length || (option && option !== 'private')) {
       return { message: 'Použi /join nazov-kanala [private].' }
     }
-    if (name.length > 60 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
+    if (name.length > 60 || !channelNamePattern.test(name)) {
       return { message: 'Názov kanála môže mať najviac 60 znakov: malé písmená, čísla a pomlčky.' }
     }
     return joinChannel(name, option === 'private')
