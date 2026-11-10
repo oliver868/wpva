@@ -46,7 +46,7 @@ export async function refreshChannels() {
   try {
     const { status, body } = await request('channels')
     if (status !== 200) throw new Error(serverError)
-    if (version !== requestVersion) return
+    if (version !== requestVersion) return false
 
     const previousChannels = new Map(state.channels.map(channel => [channel.id, channel]))
     state.channels = body.data.map(channel => {
@@ -63,8 +63,10 @@ export async function refreshChannels() {
       state.activeServer = findServerForChannel(state.channels[0])?.name ?? channelGroup
     }
     state.channelsError = ''
+    return true
   } catch {
     if (version === requestVersion) state.channelsError = 'Kanály sa nepodarilo načítať.'
+    return false
   } finally {
     if (version === requestVersion) state.channelsLoading = false
   }
@@ -274,7 +276,18 @@ const channelNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export async function runCommand(text, channel) {
   const [command, argument, option, ...rest] = text.trim().split(/\s+/)
 
-  if (command === '/list') return { message: 'Zoznam členov kanála.' }
+  if (command === '/list') {
+    if (argument) return { message: 'Použi /list bez ďalších argumentov.' }
+    if (!channel) return { message: 'Príkaz /list použi v kanáli.' }
+    if (!(await refreshChannels())) {
+      return { message: 'Členov sa nepodarilo načítať. Skús to znova.' }
+    }
+    const current = state.channels.find(item => item.id === channel.id)
+    if (!current?.members.includes(state.me) || hasChannelInvitation(current)) {
+      return { message: 'Členov môžeš zobraziť iba v kanáli, ktorého si členom.' }
+    }
+    return { showMembers: true }
+  }
 
   if (command === '/join') {
     const name = argument?.replace(/^#/, '').toLowerCase()

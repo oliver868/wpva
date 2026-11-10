@@ -139,7 +139,7 @@
           unelevated
           no-caps
           :label="showMembers ? 'Skryť členov' : 'Členovia'"
-          @click="showMembers = !showMembers"
+          @click="toggleMembers"
         />
       </header>
 
@@ -259,18 +259,7 @@ const confirmChannelExit = inject('confirmChannelExit')
 const updateChannelVisibility = inject('updateChannelVisibility')
 
 const channel = computed(() => findChannel(route.params.name))
-const channelMembers = computed(() => {
-  if (!channel.value) {
-    return []
-  }
-  const members = [channel.value.admin]
-  for (const nick of channel.value.members) {
-    if (!members.includes(nick)) {
-      members.push(nick)
-    }
-  }
-  return members
-})
+const channelMembers = computed(() => channel.value?.members ?? [])
 const input = ref('')
 // na mobile (do 700 px) sú členovia predvolene skrytí, otvoria sa tlačidlom
 const showMembers = ref($q.screen.width > 700)
@@ -388,12 +377,13 @@ function completeCommand(command) {
 
 async function send(text) {
   input.value = ''
-  if (!text.trim()) {
+  const value = text.trim()
+  if (!value) {
     return
   }
 
-  if (!text.startsWith('/')) {
-    const result = await sendChannelMessage(channel.value, text.trim())
+  if (!value.startsWith('/')) {
+    const result = await sendChannelMessage(channel.value, value)
     if (!result.success) {
       if (result.message) $q.notify(result.message)
       input.value = text // nech sa nestratí napísaný text
@@ -401,20 +391,30 @@ async function send(text) {
     return
   }
 
-  const command = text.trim().split(' ')[0]
+  const command = text.trim().split(/\s+/)[0]
   if (command === '/cancel' || command === '/quit') {
     confirmChannelExit(command, channel.value)
     return
   }
 
+  await executeCommand(text)
+}
+
+async function executeCommand(text) {
+  const id = channel.value?.id
   const result = await runCommand(text, channel.value)
   if (result.message) $q.notify(result.message)
   if (result.goTo) {
     router.push(result.goTo)
   }
-  if (text === '/list') {
-    showMembers.value = true
+  if (text.trim().split(/\s+/)[0] === '/list' && id === channel.value?.id) {
+    showMembers.value = result.showMembers === true
   }
+}
+
+function toggleMembers() {
+  if (showMembers.value) showMembers.value = false
+  else executeCommand('/list')
 }
 
 async function accept() {
