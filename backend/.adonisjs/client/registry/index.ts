@@ -38,6 +38,12 @@ const routes = {
     tokens: [[0,"api"],[0,"v1"],[0,"account"],[0,"logout"]],
     types: placeholder as Registry['profile.sessions.destroy']['types'],
   },
+  'servers.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/servers',
+    tokens: [[0,"api"],[0,"v1"],[0,"servers"]],
+    types: placeholder as Registry['servers.store']['types'],
+  },
   'channels.channels.index': {
     methods: ["GET","HEAD"],
     pattern: '/api/v1/channels',

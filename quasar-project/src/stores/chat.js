@@ -7,6 +7,7 @@ const channelGroup = 'Kanále'
 export const state = reactive({
   ...initialChatState,
   channels: [],
+  servers: [],
   channelsLoading: false,
   channelsError: ''
 })
@@ -35,6 +36,7 @@ export function resetChannels() {
   channelSession++
   histories.clear()
   state.channels = []
+  state.servers = []
   state.channelsLoading = false
   state.channelsError = ''
   state.activeServer = channelGroup
@@ -49,6 +51,7 @@ export async function refreshChannels() {
     if (version !== requestVersion) return false
 
     const previousChannels = new Map(state.channels.map(channel => [channel.id, channel]))
+    state.servers = body.servers ?? []
     state.channels = body.data.map(channel => {
       const previous = previousChannels.get(channel.id)
       return {
@@ -59,8 +62,8 @@ export async function refreshChannels() {
         notify: previous?.notify ?? 'all'
       }
     })
-    if (!visibleChannels(state.activeServer).length) {
-      state.activeServer = findServerForChannel(state.channels[0])?.name ?? channelGroup
+    if (!visibleServers().some(server => server.name === state.activeServer)) {
+      state.activeServer = visibleServers()[0]?.name ?? channelGroup
     }
     state.channelsError = ''
     return true
@@ -77,7 +80,7 @@ export function findChannel(name) {
 }
 
 export function findServerForChannel(channel) {
-  return channel ? { name: channel.serverName ?? channelGroup } : undefined
+  return channel ? { id: channel.serverId ?? null, name: channel.serverName ?? channelGroup } : undefined
 }
 
 export function visibleChannels(serverName) {
@@ -87,10 +90,14 @@ export function visibleChannels(serverName) {
 }
 
 export function visibleServers() {
-  const groups = new Map()
+  const groups = new Map(state.servers.map(server => [
+    server.name, { ...server, channels: [], hasInvitation: false }
+  ]))
   for (const channel of visibleChannels()) {
     const { name } = findServerForChannel(channel)
-    if (!groups.has(name)) groups.set(name, { name, channels: [], hasInvitation: false })
+    if (!groups.has(name)) {
+      groups.set(name, { id: null, name, canCreate: true, channels: [], hasInvitation: false })
+    }
     const group = groups.get(name)
     group.channels.push(channel.name)
     group.hasInvitation ||= hasChannelInvitation(channel)
@@ -125,7 +132,7 @@ async function changeChannel(path, payload, successMessage, goTo) {
       // správa môže závisieť od odpovede (napr. /join: vytvorený = 201, pripojený = 200)
       const message =
         typeof successMessage === 'function' ? successMessage(status, body) : successMessage
-      return { success: true, message, goTo }
+      return { success: true, message, goTo, data: body?.data }
     }
     if (status === 404) await refreshChannels()
     return { success: false, message: body?.message ?? serverError }
@@ -134,10 +141,16 @@ async function changeChannel(path, payload, successMessage, goTo) {
   }
 }
 
-export function createChannel(name, isPrivate) {
+export function createChannel(name, isPrivate, serverId) {
   const normalized = name.trim().toLowerCase()
-  return changeChannel('channels', { name: normalized, private: isPrivate },
+  return changeChannel('channels', { name: normalized, private: isPrivate, serverId },
     `Kanál #${normalized} je vytvorený.`, '/c/' + normalized)
+}
+
+export async function createServer(name) {
+  const result = await changeChannel('servers', { name: name.trim() }, 'Server je vytvorený.', '/home')
+  if (result.success) state.activeServer = result.data.name
+  return result
 }
 
 export function exitChannel(channel, destroy) {
@@ -251,7 +264,8 @@ export function addMessage(messages, text) {
 }
 
 export function joinChannel(name, isPrivate) {
-  return changeChannel('channels/join', { name, private: isPrivate },
+  const server = visibleServers().find(item => item.name === state.activeServer)
+  return changeChannel('channels/join', { name, private: isPrivate, serverId: server?.id },
     status => status === 201 ? `Kanál #${name} je vytvorený.` : `Si v #${name}.`, '/c/' + name)
 }
 

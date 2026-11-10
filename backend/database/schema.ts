@@ -66,7 +66,7 @@ export class ChannelMembershipSchema extends BaseModel {
 }
 
 export class ChannelSchema extends BaseModel {
-  static $columns = ['id', 'isPrivate', 'lastActivityAt', 'name', 'ownerId', 'serverName'] as const
+  static $columns = ['id', 'isPrivate', 'lastActivityAt', 'name', 'ownerId', 'serverId'] as const
   $columns = ChannelSchema.$columns
   @column({ isPrimary: true })
   declare id: number
@@ -79,7 +79,7 @@ export class ChannelSchema extends BaseModel {
   @column()
   declare ownerId: number
   @column()
-  declare serverName: string | null
+  declare serverId: number | null
 }
 
 export class MessageSchema extends BaseModel {
@@ -95,6 +95,17 @@ export class MessageSchema extends BaseModel {
   declare text: string
   @column()
   declare userId: number
+}
+
+export class ServerSchema extends BaseModel {
+  static $columns = ['id', 'name', 'ownerId'] as const
+  $columns = ServerSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare ownerId: number
 }
 
 export class SessionSchema extends BaseModel {

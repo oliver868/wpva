@@ -19,6 +19,9 @@ export interface ApiDefinition {
       destroy: typeof routes['profile.sessions.destroy']
     }
   }
+  servers: {
+    store: typeof routes['servers.store']
+  }
   channels: {
     channels: {
       index: typeof routes['channels.channels.index']

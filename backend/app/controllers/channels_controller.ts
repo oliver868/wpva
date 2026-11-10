@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import vine from '@vinejs/vine'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
 const name = () =>
   vine
@@ -10,8 +11,17 @@ const name = () =>
     .maxLength(60)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 
-const createChannel = vine.create({ name: name(), private: vine.boolean() })
-const joinChannel = vine.create({ name: name(), private: vine.boolean().optional() })
+const serverId = () => vine.number().withoutDecimals().positive().nullable().optional()
+const createChannel = vine.create({
+  name: name(),
+  private: vine.boolean(),
+  serverId: serverId(),
+})
+const joinChannel = vine.create({
+  name: name(),
+  private: vine.boolean().optional(),
+  serverId: serverId(),
+})
 const setVisibility = vine.create({ private: vine.boolean() })
 const invitationDecision = vine.create({ accept: vine.boolean() })
 const inviteeSearch = vine.create({ q: vine.string().trim().maxLength(100).optional() })
@@ -40,6 +50,24 @@ function positiveId(value: unknown) {
 
 // výsledok akcie v transakcii: HTTP status + správa pre používateľa
 type Outcome = { status: number; message?: string }
+
+async function canCreateChannel(
+  trx: TransactionClientContract,
+  id: number | null | undefined,
+  userId: number
+) {
+  if (!id) return true
+  const server = await trx.from('servers').where('id', id).first()
+  if (!server) return false
+  if (server.owner_id === userId) return true
+  const member = await trx
+    .from('channel_memberships as membership')
+    .join('channels as channel', 'channel.id', 'membership.channel_id')
+    .where({ 'channel.server_id': id, 'membership.user_id': userId, 'membership.is_banned': false })
+    .where('channel.last_activity_at', '>=', inactivityCutoff())
+    .first()
+  return Boolean(member)
+}
 
 export default class ChannelsController {
   async invitees({ auth, params, request, response }: HttpContext) {
@@ -90,6 +118,7 @@ export default class ChannelsController {
     const channels = await db
       .from('channels as channel')
       .join('users as owner', 'owner.id', 'channel.owner_id')
+      .leftJoin('servers as server', 'server.id', 'channel.server_id')
       .leftJoin('channel_memberships as membership', (join) =>
         join.on('membership.channel_id', 'channel.id').andOnVal('membership.user_id', user.id)
       )
@@ -106,7 +135,8 @@ export default class ChannelsController {
       .select(
         'channel.id',
         'channel.name',
-        'channel.server_name',
+        'channel.server_id',
+        'server.name as server_name',
         'channel.is_private as private',
         'owner.nick as admin',
         'owner.id as owner_id',
@@ -132,12 +162,28 @@ export default class ChannelsController {
       byChannel.set(member.channel_id, nicks)
     }
 
+    const visibleServerIds = channels.map((channel) => channel.server_id).filter(Boolean)
+    const joinedServerIds = new Set(
+      channels.filter((channel) => channel.member_id).map((channel) => channel.server_id)
+    )
+    const servers = await db
+      .from('servers')
+      .where((query) => query.where('owner_id', user.id).orWhereIn('id', visibleServerIds))
+      .select('id', 'name', 'owner_id')
+      .orderBy('name')
+
     response.header('Cache-Control', 'no-store')
     return {
+      servers: servers.map((server) => ({
+        id: server.id,
+        name: server.name,
+        canCreate: server.owner_id === user.id || joinedServerIds.has(server.id),
+      })),
       data: channels.map((channel) => ({
         id: channel.id,
         name: channel.name,
         serverName: channel.server_name,
+        serverId: channel.server_id,
         private: channel.private,
         admin: channel.admin ?? `account:${channel.owner_id}`,
         members: channel.member_id ? (byChannel.get(channel.id) ?? []) : [],
@@ -152,6 +198,7 @@ export default class ChannelsController {
     const user = auth.getUserOrFail()
     const payload = await request.validateUsing(createChannel)
     const channel = await db.transaction(async (trx) => {
+      if (!(await canCreateChannel(trx, payload.serverId, user.id))) return false
       await trx
         .from('channels')
         .where('name', payload.name)
@@ -161,7 +208,12 @@ export default class ChannelsController {
       const [created] = await trx
         .insertQuery()
         .table('channels')
-        .insert({ name: payload.name, owner_id: user.id, is_private: payload.private })
+        .insert({
+          name: payload.name,
+          owner_id: user.id,
+          is_private: payload.private,
+          server_id: payload.serverId ?? null,
+        })
         .onConflict('name')
         .ignore()
         .returning(['id', 'name'])
@@ -174,6 +226,8 @@ export default class ChannelsController {
       return created
     })
 
+    if (channel === false)
+      return response.forbidden({ message: 'Na tomto serveri nemôžeš vytvárať kanály.' })
     if (!channel) return response.conflict({ message: 'Kanál s týmto názvom už existuje.' })
     return response.created({ data: channel })
   }
@@ -191,10 +245,18 @@ export default class ChannelsController {
 
       const channel = await trx.from('channels').where('name', payload.name).forUpdate().first()
       if (!channel) {
+        if (!(await canCreateChannel(trx, payload.serverId, user.id))) {
+          return { status: 403, message: 'Na tomto serveri nemôžeš vytvárať kanály.' }
+        }
         const [created] = await trx
           .insertQuery()
           .table('channels')
-          .insert({ name: payload.name, owner_id: user.id, is_private: payload.private ?? false })
+          .insert({
+            name: payload.name,
+            owner_id: user.id,
+            is_private: payload.private ?? false,
+            server_id: payload.serverId ?? null,
+          })
           .onConflict('name')
           .ignore()
           .returning('id')

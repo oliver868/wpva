@@ -21,6 +21,15 @@
           label="Vytvoriť kanál"
           @click="openCreate()"
         />
+        <q-btn
+          v-if="signedIn"
+          class="k-btn"
+          unelevated
+          no-caps
+          icon="add"
+          label="Vytvoriť server"
+          @click="openCreateServer"
+        />
 
         <q-input
           v-if="signedIn"
@@ -575,6 +584,27 @@
       <q-card class="dialog">
         <q-form class="dialog-form" @submit.prevent="submitChannel">
           <h2>Nový kanál</h2>
+          <q-select
+            v-model="newServerId"
+            class="k-input"
+            borderless
+            dense
+            label="Server"
+            :options="channelServerOptions"
+            emit-value
+            map-options
+            :rules="[validateChannelServer]"
+          />
+          <p v-if="!channelServerOptions.length" class="hint">
+            Najprv vytvor server alebo sa staň členom kanála na existujúcom serveri.
+          </p>
+          <q-btn
+            class="k-btn"
+            unelevated
+            no-caps
+            label="Vytvoriť server"
+            @click="openCreateServer"
+          />
           <q-input
             v-model="newName"
             class="k-input"
@@ -595,6 +625,34 @@
               type="submit"
               label="Vytvoriť"
               :loading="creatingChannel"
+              :disable="!channelServerOptions.length"
+            />
+          </div>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showServerDialog">
+      <q-card class="dialog">
+        <q-form class="dialog-form" @submit.prevent="submitServer">
+          <h2>Nový server</h2>
+          <q-input
+            v-model="newServerName"
+            class="k-input"
+            borderless
+            label="Názov servera"
+            maxlength="60"
+            :rules="[value => !!value?.trim() || 'Zadaj názov servera.']"
+          />
+          <div class="row justify-end q-gutter-sm">
+            <q-btn v-close-popup class="k-btn" unelevated no-caps label="Zrušiť" />
+            <q-btn
+              class="k-btn dark"
+              unelevated
+              no-caps
+              type="submit"
+              label="Vytvoriť server"
+              :loading="creatingServer"
             />
           </div>
         </q-form>
@@ -628,6 +686,7 @@ import {
   resetChannels,
   exitChannel,
   createChannel,
+  createServer,
   setChannelVisibility,
 } from "@/stores/chat.js";
 import UserAvatar from "@/components/UserAvatar.vue";
@@ -642,6 +701,16 @@ const { signOut, signingOut } = useSignOut();
 const drawer = ref(false);
 const showCreate = ref(false);
 const creatingChannel = ref(false);
+const showServerDialog = ref(false);
+const newServerName = ref("");
+const creatingServer = ref(false);
+const newServerId = ref(undefined);
+const channelServerOptions = computed(() => visibleServers()
+  .filter(server => server.canCreate)
+  .map(server => ({
+    label: server.id === null ? server.name + " (bez servera)" : server.name,
+    value: server.id,
+  })));
 const pendingExit = ref(null);
 const pendingExitDeletesChannel = computed(() => {
   if (!pendingExit.value) {
@@ -765,7 +834,9 @@ watch(signedIn, (active, _, onCleanup) => {
   resetChannels();
   if (!active) return;
   refreshChannels();
-  const timer = window.setInterval(refreshChannels, 10000);
+  const timer = window.setInterval(() => {
+    if (!state.channelsLoading) refreshChannels();
+  }, 1000);
   onCleanup(() => window.clearInterval(timer));
 }, { immediate: true });
 
@@ -876,15 +947,45 @@ function validateChannelName(value) {
   return "Použi najviac 60 znakov: malé písmená, čísla a pomlčky.";
 }
 
-function openCreate() {
+function validateChannelServer(value) {
+  return channelServerOptions.value.some(option => option.value === value) || "Vyber server.";
+}
+
+function openCreate(serverName = state.activeServer) {
+  const server = visibleServers().find(item => item.name === serverName && item.canCreate);
+  newServerId.value = server ? server.id : channelServerOptions.value[0]?.value;
   showCreate.value = true;
 }
 provide("openCreateChannel", openCreate);
 
+function openCreateServer() {
+  showCreate.value = false;
+  newServerName.value = "";
+  showServerDialog.value = true;
+}
+provide("openCreateServer", openCreateServer);
+
+async function submitServer() {
+  if (creatingServer.value) return;
+  creatingServer.value = true;
+  try {
+    const result = await createServer(newServerName.value);
+    if (result.message) $q.notify(result.message);
+    if (result.success) {
+      showServerDialog.value = false;
+      sidebarSearch.value = "";
+      serversExpanded.value = true;
+      router.push("/home");
+    }
+  } finally {
+    creatingServer.value = false;
+  }
+}
+
 async function submitChannel() {
   if (creatingChannel.value) return;
   creatingChannel.value = true;
-  const result = await createChannel(newName.value, newPrivate.value);
+  const result = await createChannel(newName.value, newPrivate.value, newServerId.value);
   creatingChannel.value = false;
   if (result.message) $q.notify(result.message);
   if (!result.goTo) return;

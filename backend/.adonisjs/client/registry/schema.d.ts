@@ -73,6 +73,19 @@ export interface Registry {
       rawResponse: ExtractRawResponse<Awaited<ReturnType<import('#controllers/sessions_controller').default['destroy']>>>
     }
   }
+  'servers.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/servers'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/servers_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/servers_controller').default['store']>>>
+      rawResponse: ExtractRawResponse<Awaited<ReturnType<import('#controllers/servers_controller').default['store']>>>
+    }
+  }
   'channels.channels.index': {
     methods: ["GET","HEAD"]
     pattern: '/api/v1/channels'

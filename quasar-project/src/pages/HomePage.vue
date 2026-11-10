@@ -68,6 +68,15 @@
               dense
               no-caps
               icon="add"
+              label="Vytvoriť server"
+              @click="openCreateServer()"
+            />
+            <q-btn
+              class="k-btn home-add-channel"
+              unelevated
+              dense
+              no-caps
+              icon="add"
               label="Vytvoriť kanál"
               @click="openCreate()"
             />
@@ -97,12 +106,13 @@
                   {{ channelWord(server.channels.length) }}
                 </span>
                 <q-btn
+                  v-if="server.canCreate"
                   flat
                   dense
                   round
                   icon="add"
                   :aria-label="`Vytvoriť kanál`"
-                  @click="openCreate()"
+                  @click="openCreate(server.name)"
                 />
               </div>
 
@@ -206,6 +216,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 
 const router = useRouter()
 const openCreate = inject('openCreateChannel')
+const openCreateServer = inject('openCreateServer')
 
 const serverGroups = computed(() => {
   const groups = []
@@ -218,6 +229,7 @@ const serverGroups = computed(() => {
       }
     }
     groups.push({
+      ...server,
       name: server.name,
       channels: channels,
       hasInvitation: server.hasInvitation

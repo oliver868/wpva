@@ -9,6 +9,7 @@ export type ScannedRoutes = {
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
     'profile.sessions.destroy': { paramsTuple?: []; params?: {} }
+    'servers.store': { paramsTuple?: []; params?: {} }
     'channels.channels.index': { paramsTuple?: []; params?: {} }
     'channels.channels.store': { paramsTuple?: []; params?: {} }
     'channels.channels.join': { paramsTuple?: []; params?: {} }
@@ -41,6 +42,7 @@ export type ScannedRoutes = {
     'auth.new_account.store': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'profile.sessions.destroy': { paramsTuple?: []; params?: {} }
+    'servers.store': { paramsTuple?: []; params?: {} }
     'channels.channels.store': { paramsTuple?: []; params?: {} }
     'channels.channels.join': { paramsTuple?: []; params?: {} }
     'channels.channels.invite': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

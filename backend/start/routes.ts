@@ -12,6 +12,7 @@ import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 
 const ChannelsController = () => import('#controllers/channels_controller')
+const ServersController = () => import('#controllers/servers_controller')
 
 router.get('/', () => {
   return { hello: 'world' }
@@ -36,6 +37,8 @@ router
       .prefix('account')
       .as('profile')
       .use(middleware.auth())
+
+    router.post('servers', [ServersController, 'store']).use(middleware.auth())
 
     router
       .group(() => {
