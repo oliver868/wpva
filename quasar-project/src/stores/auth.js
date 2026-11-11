@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { state } from './chat.js'
 import { post, request, serverError } from './api.js'
+import { notificationPreferences } from './notifications.js'
 
 export const signedIn = ref(false)
 
@@ -31,7 +32,10 @@ function activateAccount(user) {
   }
 
   Object.assign(state, context)
-  state.profile = { firstName, lastName, email: user.email }
+  const preferences = notificationPreferences(user.id)
+  if (typeof preferences?.enabled === 'boolean') state.notifications = preferences.enabled
+  if (typeof preferences?.onlyMentions === 'boolean') state.onlyMentions = preferences.onlyMentions
+  state.profile = { id: user.id, firstName, lastName, email: user.email }
   state.users = {
     ...state.users,
     [nick]: {

@@ -55,6 +55,7 @@
           v-model="state.notifications"
           color="positive"
           label="Notifikácie o nových správach"
+          @update:model-value="value => { if (value) enableNotifications() }"
         />
         <q-toggle
           v-model="state.onlyMentions"
@@ -62,6 +63,17 @@
           :label="'Iba správy pre mňa (@' + state.me + ')'"
         />
         <p class="hint">Notifikácia príde, iba keď appka nie je viditeľná.</p>
+        <q-btn
+          v-if="notificationPermission !== 'granted'"
+          class="k-btn"
+          unelevated
+          no-caps
+          label="Povoliť systémové notifikácie"
+          @click="enableNotifications"
+        />
+        <p v-if="notificationPermission === 'denied'" class="hint" role="status">
+          Notifikácie sú zablokované. Povoľ ich v nastaveniach prehliadača pre túto stránku.
+        </p>
 
         <!-- ako vyzerá systémová notifikácia novej správy -->
         <label>Ukážka systémovej notifikácie</label>
@@ -140,13 +152,29 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { state } from '@/stores/chat.js'
 import { useSignOut } from '@/stores/auth.js'
 
 const $q = useQuasar()
 const { signOut, signingOut } = useSignOut()
+const notificationPermission = ref(
+  typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+)
+
+async function enableNotifications() {
+  if (!('Notification' in window)) {
+    $q.notify('Tento prehliadač nepodporuje notifikácie')
+    return false
+  }
+  notificationPermission.value = await Notification.requestPermission()
+  if (notificationPermission.value !== 'granted') {
+    $q.notify('Povoľ notifikácie v nastaveniach prehliadača')
+    return false
+  }
+  return true
+}
 
 // vysvetlenie, či a kedy notifikácia príde podľa nastavení a stavu
 const notificationHint = computed(() => {
@@ -162,14 +190,7 @@ const notificationHint = computed(() => {
 
 // skutočná notifikácia prehliadača – ukáže sa, iba ak appka nie je viditeľná
 async function testNotification() {
-  if (!('Notification' in window)) {
-    $q.notify('Tento prehliadač nepodporuje notifikácie')
-    return
-  }
-  if ((await Notification.requestPermission()) !== 'granted') {
-    $q.notify('Povoľ notifikácie v nastaveniach prehliadača')
-    return
-  }
+  if (!(await enableNotifications())) return
   $q.notify('Prepni sa na inú kartu, o 5 sekúnd príde notifikácia')
   setTimeout(() => {
     if (!state.notifications) {

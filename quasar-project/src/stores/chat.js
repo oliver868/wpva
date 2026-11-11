@@ -121,6 +121,10 @@ export function hasChannelInvitation(channel, nick = state.me) {
   return channelInvitation(channel, nick) !== undefined
 }
 
+export function mentionsUser(text, nick = state.me) {
+  return new RegExp(`(^|[^a-z0-9_-])@${nick}(?![a-z0-9_-])`, 'i').test(text)
+}
+
 async function changeChannel(path, payload, successMessage, goTo) {
   const session = channelSession
   try {
@@ -208,15 +212,14 @@ export async function loadOlderMessages(channel) {
     const { status, body } = await request(
       `channels/${channel.id}/messages` + (oldest ? `?before=${oldest}` : '')
     )
-    if (status !== 200 || histories.get(channel.id) !== history) return history.hasOlder
+    if (histories.get(channel.id) !== history) return false
+    if (status !== 200) throw new Error('História správ nie je dostupná.')
     appendMessages(history, body.data)
     if (!history.initialized) {
       history.newestFetchedId = body.data.at(-1)?.id ?? 0
       history.initialized = true
     }
     history.hasOlder = body.hasMore
-    return history.hasOlder
-  } catch {
     return history.hasOlder
   } finally {
     history.loading = false
@@ -252,7 +255,10 @@ export async function sendChannelMessage(channel, text) {
     if (status !== 201) return { success: false, message: body?.message ?? serverError }
     if (histories.get(channel.id) !== history) return { success: false }
     if (history.initialized) appendMessages(history, [body.data])
-    else await loadOlderMessages(channel)
+    else {
+      // Správa už je uložená. Chyba načítania nesmie spôsobiť jej opakované odoslanie.
+      await loadOlderMessages(channel).catch(() => {})
+    }
     return { success: true }
   } catch {
     return { success: false, message: serverError }

@@ -1,64 +1,58 @@
 <template>
   <div ref="box" class="messages scroll" @scroll="checkTop">
-    <q-infinite-scroll
-      ref="scroller"
-      reverse
-      :offset="100"
-      :disable="!loadOlder || historyEnd"
-      @load="onLoad"
+    <div v-if="loading" class="history-loading" role="status">
+      <q-spinner-dots size="26px" />
+      Načítavam staršie správy…
+    </div>
+    <div v-else-if="loadError" class="history-end" role="alert">
+      <span>{{ loadError }}</span>
+      <q-btn flat no-caps label="Skúsiť znova" @click="loadMore" />
+    </div>
+
+    <!-- koniec histórie: staršie správy už nie sú -->
+    <p v-if="loadOlder && historyEnd" class="history-end">
+      <q-icon name="history" size="16px" aria-hidden="true" />
+      Toto je začiatok histórie, staršie správy už nie sú.
+    </p>
+
+    <div
+      v-for="(message, index) in visibleMessages"
+      :key="message.id ?? firstVisibleIndex + index"
+      class="message"
+      :class="{
+        mine: message.from === state.me,
+        mentioned: message.from !== state.me && mentionsMe(message.text)
+      }"
     >
-      <!-- zobrazí sa počas načítavania staršej histórie -->
-      <template #loading>
-        <div class="history-loading" role="status">
-          <q-spinner-dots size="26px" />
-          Načítavam staršie správy…
-        </div>
-      </template>
-
-      <!-- koniec histórie: staršie správy už nie sú -->
-      <p v-if="loadOlder && historyEnd" class="history-end">
-        <q-icon name="history" size="16px" aria-hidden="true" />
-        Toto je začiatok histórie, staršie správy už nie sú.
-      </p>
-
       <div
-        v-for="(message, index) in visibleMessages"
-        :key="message.id ?? firstVisibleIndex + index"
-        class="message"
-        :class="{
-          mine: message.from === state.me,
-          mentioned: message.from !== state.me && mentionsMe(message.text)
+        class="message-head"
+        :style="{
+          background:
+            'var(--' + (state.users[message.from]?.color ?? 'lav') + ')'
         }"
       >
-        <div
-          class="message-head"
-          :style="{
-            background:
-              'var(--' + (state.users[message.from]?.color ?? 'lav') + ')'
-          }"
-        >
-          <b>{{ message.from === state.me ? 'ty' : message.from }}</b>
-          <span>{{ message.time }}</span>
-        </div>
-        <p>{{ message.text }}</p>
+        <b>{{ message.from === state.me ? 'ty' : message.from }}</b>
+        <span>{{ message.time }}</span>
       </div>
-    </q-infinite-scroll>
+      <p>{{ message.text }}</p>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { state } from '@/stores/chat.js'
+import { state, mentionsUser } from '@/stores/chat.js'
 
 const props = defineProps({
   messages: { type: Array, required: true },
   loadOlder: { type: Boolean, default: false },
-  // ak je zadané, staršie správy sa načítavajú zo servera (vráti, či sú ďalšie)
+  // Vráti, či sú ďalšie správy. Pri chybe vyhodí výnimku.
   fetchOlder: { type: Function, default: null }
 })
 
 const box = ref(null)
-const scroller = ref(null)
+const loading = ref(false)
+const loadError = ref('')
 const pageSize = 20
 const firstVisibleIndex = ref(0)
 if (!props.fetchOlder && props.loadOlder && props.messages.length > pageSize) {
@@ -76,67 +70,78 @@ const historyEnd = computed(() =>
 // správa je adresovaná mne, ak obsahuje @môjnick ako samostatné slovo
 // (@dan nezvýrazní správu pre @dano)
 function mentionsMe(text) {
-  return new RegExp(`(^|[^a-z0-9_-])@${state.me}(?![a-z0-9_-])`, 'i').test(text)
+  return mentionsUser(text)
 }
 
-async function onLoad(index, done) {
-  if (props.fetchOlder) {
-    const countBefore = props.messages.length
-    olderOnServer.value = await props.fetchOlder()
-    if (!box.value) return // medzitým si odišiel z chatu
-    if (index === 1) scrollDown() // prvá strana: zobraz najnovšie správy
-    nextTick(() => {
-      done(historyEnd.value)
-      // ďalšiu stranu skús iba ak táto niečo pridala (pri chybe servera sa nezacyklí)
-      if (props.messages.length > countBefore) setTimeout(checkTop, 50)
-    })
-    return
+async function loadMore() {
+  if (!props.loadOlder || historyEnd.value || loading.value) return
+  const countBefore = visibleMessages.value.length
+  loading.value = true
+  loadError.value = ''
+  try {
+    if (props.fetchOlder) olderOnServer.value = await props.fetchOlder()
+    else
+      firstVisibleIndex.value = Math.max(0, firstVisibleIndex.value - pageSize)
+  } catch {
+    loadError.value = 'Staršie správy sa nepodarilo načítať.'
+  } finally {
+    loading.value = false
   }
-  loadLocalPage(done)
+  await nextTick()
+  if (visibleMessages.value.length > countBefore) checkTop()
 }
 
-function loadLocalPage(done) {
-  // krátke čakanie simuluje odpoveď servera, aby bolo vidno indikátor
-  // (v 2. fáze sa nahradí volaním API)
-  setTimeout(() => {
-    if (!box.value) return // medzitým si odišiel z chatu
-    firstVisibleIndex.value -= pageSize
-    if (firstVisibleIndex.value < 0) {
-      firstVisibleIndex.value = 0
-    }
-    nextTick(() => {
-      done(historyEnd.value)
-      setTimeout(checkTop, 50) // pri malom počte správ hneď ďalšia strana
-    })
-  }, 700)
-}
-
-// keď je vrch zoznamu blízko, načítaj staršie správy
-// (poistka ku q-infinite-scroll, ktorý sa v chate nie vždy sám ozve)
+// Pri hornom okraji načítaj ďalšiu stranu histórie.
 function checkTop() {
   if (
     box.value &&
     props.loadOlder &&
+    !loading.value &&
+    !loadError.value &&
     !historyEnd.value &&
     box.value.scrollTop <= 100
   ) {
-    scroller.value?.trigger()
+    loadMore()
   }
 }
 
 function scrollDown() {
-  nextTick(() => {
-    if (box.value) box.value.scrollTop = box.value.scrollHeight
-  })
+  if (box.value) box.value.scrollTop = box.value.scrollHeight
 }
 
-onMounted(() => {
+onMounted(async () => {
   scrollDown()
-  // prázdny kanál zo servera: hneď načítaj prvú stranu
-  if (props.fetchOlder) nextTick(checkTop)
+  await nextTick()
+  checkTop()
 })
 
-watch(() => props.messages[props.messages.length - 1], scrollDown)
+watch(
+  () => [firstVisibleIndex.value, props.messages.length, props.messages.at(-1)],
+  ([, , last], [, previousLength, previousLast]) => {
+    const element = box.value
+    if (!element) return
+    const nearBottom =
+      element.scrollHeight - element.clientHeight - element.scrollTop < 80
+    const newLast = last !== previousLast
+    const follow =
+      previousLength === 0 ||
+      (newLast && (nearBottom || last?.from === state.me))
+    const top = element.getBoundingClientRect().top
+    const anchor = [...element.querySelectorAll('.message')].find(
+      message => message.getBoundingClientRect().bottom > top
+    )
+    const anchorTop = anchor?.getBoundingClientRect().top
+
+    nextTick(() => {
+      if (box.value !== element) return
+      if (follow) scrollDown()
+      else if (anchor?.isConnected) {
+        element.scrollTop += anchor.getBoundingClientRect().top - anchorTop
+      }
+      checkTop()
+    })
+  }
+)
 </script>
 
 <style lang="scss">

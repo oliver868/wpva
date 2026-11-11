@@ -147,7 +147,7 @@
 
       <div class="content">
         <MessageList
-          :key="channel.name"
+          :key="channel.id"
           :messages="channel.messages"
           :fetch-older="() => loadOlderMessages(channel)"
           load-older

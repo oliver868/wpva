@@ -136,6 +136,9 @@ export default class ChannelsController {
         'channel.id',
         'channel.name',
         'channel.server_id',
+        db.raw(
+          '(SELECT coalesce(max(id), 0) FROM messages WHERE channel_id = channel.id) AS latest_message_id'
+        ),
         'server.name as server_name',
         'channel.is_private as private',
         'owner.nick as admin',
@@ -184,6 +187,7 @@ export default class ChannelsController {
         name: channel.name,
         serverName: channel.server_name,
         serverId: channel.server_id,
+        latestMessageId: channel.latest_message_id,
         private: channel.private,
         admin: channel.admin ?? `account:${channel.owner_id}`,
         members: channel.member_id ? (byChannel.get(channel.id) ?? []) : [],
