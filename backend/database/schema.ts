@@ -122,7 +122,7 @@ export class SessionSchema extends BaseModel {
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = ['createdAt', 'email', 'firstName', 'fullName', 'id', 'lastName', 'nick', 'password', 'updatedAt'] as const
+  static $columns = ['createdAt', 'email', 'firstName', 'fullName', 'id', 'lastName', 'nick', 'password', 'status', 'updatedAt'] as const
   $columns = UserSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -140,6 +140,8 @@ export class UserSchema extends BaseModel {
   declare nick: string | null
   @column({ serializeAs: null })
   declare password: string
+  @column()
+  declare status: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }

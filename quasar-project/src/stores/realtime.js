@@ -1,12 +1,47 @@
-import { watch } from 'vue'
+import { shallowRef, watch } from 'vue'
 import { Socket } from '@rlanz/socket/client'
-import { state, refreshChannels, receiveMessages } from './chat.js'
-import { request } from './api.js'
+import { state, refreshChannels, receiveMessages, setUser } from './chat.js'
+import { post, request } from './api.js'
 import { startMessageNotifications } from './notifications.js'
+
+// aktuálne spojenie (null, kým nie je používateľ prihlásený)
+export const realtimeSocket = shallowRef(null)
+
+function isOffline() {
+  return state.users[state.me]?.status === 'offline'
+}
+
+// stavová lišta „píše…“ pre jeden kanál
+export function joinTyping(channelId, onTyping) {
+  const channel = realtimeSocket.value.channel('channels/:id', { id: String(channelId) })
+
+  channel.listen('typing', data => {
+    // v stave offline neprichádza nič
+    if (!isOffline()) {
+      onTyping(data)
+    }
+  })
+  channel.subscribe().catch(() => {})
+
+  function send(text) {
+    if (channel.active) {
+      channel.send('typing', { text: isOffline() ? '' : text })
+    }
+  }
+
+  return {
+    send,
+    stop() {
+      send('')
+      channel.unsubscribe().catch(() => {})
+    }
+  }
+}
 
 export function startRealtime($q, openChannel) {
   const socket = new Socket()
   const account = socket.channel('users/:id', { id: String(state.profile.id) })
+  realtimeSocket.value = socket
   const notifications = startMessageNotifications($q, openChannel)
   const cursors = new Map()
 
@@ -31,7 +66,8 @@ export function startRealtime($q, openChannel) {
   async function syncMessages(channelId) {
     const cursor = cursors.get(channelId)
 
-    if (!active || !cursor) {
+    // offline používateľ správy nenačítava, dostane ich po prepnutí na online
+    if (!active || !cursor || isOffline()) {
       return
     }
 
@@ -132,7 +168,7 @@ export function startRealtime($q, openChannel) {
   }
 
   account.listen('messageCreated', async ({ channelId, message }) => {
-    if (!active) {
+    if (!active || isOffline()) {
       return
     }
 
@@ -153,6 +189,34 @@ export function startRealtime($q, openChannel) {
   account.listen('channelsChanged', () => {
     void refresh()
   })
+
+  // iný používateľ zmenil stav (alebo zavrel / otvoril aplikáciu)
+  account.listen('statusChanged', ({ nick, status }) => {
+    if (active && nick !== state.me) {
+      setUser(nick, { status })
+    }
+  })
+
+  // svoj stav uložíme na server; po prepnutí na online sa kanály aktualizujú
+  const stopStatus = watch(
+    () => state.users[state.me]?.status,
+    async status => {
+      try {
+        const { status: code } = await post('account/status', { status })
+
+        if (code !== 204) {
+          throw new Error()
+        }
+      } catch {
+        $q.notify('Stav sa nepodarilo uložiť. Skús to znova.')
+        return
+      }
+
+      if (active && status === 'online') {
+        await refresh()
+      }
+    }
+  )
 
   const stopState = socket.onStateChange(async status => {
     connected = false
@@ -196,7 +260,9 @@ export function startRealtime($q, openChannel) {
     window.clearInterval(retry)
     stopState()
     stopChannels()
+    stopStatus()
     notifications.stop()
     socket.disconnect()
+    realtimeSocket.value = null
   }
 }

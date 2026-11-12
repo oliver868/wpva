@@ -45,8 +45,11 @@ export default class RealtimeMiddleware {
 
           const members = await trx
             .from('channel_memberships')
+            .join('users', 'users.id', 'channel_memberships.user_id')
             .where('channel_id', id)
             .where('is_banned', false)
+            // používateľ v stave offline nové správy nedostáva
+            .whereNot('users.status', 'offline')
             .select('user_id')
 
           await publish(

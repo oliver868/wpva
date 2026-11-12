@@ -40,7 +40,8 @@ function activateAccount(user) {
     ...state.users,
     [nick]: {
       name: [firstName, lastName].filter(Boolean).join(' ') || nick,
-      status,
+      // stav je uložený na serveri
+      status: user.status ?? status,
       color: 'lav'
     }
   }

@@ -3,8 +3,40 @@ import socket from '@rlanz/socket/services/main'
 import type { AuthenticatedSocket } from '@rlanz/socket/types'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 
-export type SocketUser = { id: number; sessionId: string }
+export type SocketUser = { id: number; nick: string; sessionId: string }
 export const connections = new Map<string, AuthenticatedSocket<SocketUser>>()
+
+export function isConnected(userId: number) {
+  return [...connections.values()].some((item) => item.getUserOrFail().id === userId)
+}
+
+// stav, ktorý vidia ostatní: kto nemá otvorenú aplikáciu, je offline
+export function visibleStatus(userId: number, status: string) {
+  return isConnected(userId) ? status : 'offline'
+}
+
+// pošle stav používateľa všetkým, s ktorými je spolu v nejakom kanáli
+export async function publishStatus(userId: number) {
+  const user = await db.from('users').where('id', userId).select('nick', 'status').first()
+
+  if (!user?.nick) {
+    return
+  }
+
+  const members = await db
+    .from('channel_memberships as mine')
+    .join('channel_memberships as other', 'other.channel_id', 'mine.channel_id')
+    .where('mine.user_id', userId)
+    .where('mine.is_banned', false)
+    .where('other.is_banned', false)
+    .distinct('other.user_id')
+
+  await publish(
+    members.map((item) => Number(item.user_id)),
+    'statusChanged',
+    { nick: user.nick, status: visibleStatus(userId, user.status) }
+  )
+}
 
 export function disconnectSession(sessionId: string) {
   for (const connection of connections.values()) {

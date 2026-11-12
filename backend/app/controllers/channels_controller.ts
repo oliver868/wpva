@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import vine from '@vinejs/vine'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import { visibleStatus } from '#services/realtime'
 
 const name = () =>
   vine
@@ -156,13 +157,27 @@ export default class ChannelsController {
       .join('users', 'users.id', 'membership.user_id')
       .whereIn('membership.channel_id', memberIds)
       .where('membership.is_banned', false)
-      .select('membership.channel_id', 'users.id', 'users.nick')
+      .select(
+        'membership.channel_id',
+        'users.id',
+        'users.nick',
+        'users.full_name',
+        'users.status'
+      )
       .orderBy('users.nick')
     const byChannel = new Map<number, string[]>()
+    // meno a stav každého člena, aby ho frontend vedel zobraziť
+    const users = new Map<string, { nick: string; name: string; status: string }>()
     for (const member of members) {
+      const nick = member.nick ?? `account:${member.id}`
       const nicks = byChannel.get(member.channel_id) ?? []
-      nicks.push(member.nick ?? `account:${member.id}`)
+      nicks.push(nick)
       byChannel.set(member.channel_id, nicks)
+      users.set(nick, {
+        nick,
+        name: member.full_name || nick,
+        status: visibleStatus(member.id, member.status),
+      })
     }
 
     const visibleServerIds = channels.map((channel) => channel.server_id).filter(Boolean)
@@ -177,6 +192,7 @@ export default class ChannelsController {
 
     response.header('Cache-Control', 'no-store')
     return {
+      users: [...users.values()],
       servers: servers.map((server) => ({
         id: server.id,
         name: server.name,

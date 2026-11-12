@@ -32,6 +32,7 @@ router
     router
       .group(() => {
         router.get('profile', [controllers.Profile, 'show'])
+        router.post('status', [controllers.Profile, 'updateStatus'])
         router.post('logout', [controllers.Sessions, 'destroy'])
       })
       .prefix('account')

@@ -9,8 +9,10 @@ export default defineConfig({
     ],
     async authenticate({ httpContext }) {
       await httpContext.auth.authenticateUsing(['web'])
+      const user = httpContext.auth.getUserOrFail()
       return {
-        id: httpContext.auth.getUserOrFail().id,
+        id: user.id,
+        nick: user.nick ?? `account:${user.id}`,
         sessionId: httpContext.session.sessionId,
       }
     },

@@ -61,6 +61,13 @@ export async function refreshChannels() {
 
     const previousChannels = new Map(state.channels.map(channel => [channel.id, channel]))
 
+    for (const user of body.users ?? []) {
+      // svoj stav si drží používateľ sám (môže ho práve meniť)
+      if (user.nick !== state.me) {
+        setUser(user.nick, user)
+      }
+    }
+
     state.servers = body.servers ?? []
     state.channels = body.data.map(channel => {
       const previous = previousChannels.get(channel.id)
@@ -97,6 +104,13 @@ export async function refreshChannels() {
       state.channelsLoading = false
     }
   }
+}
+
+// meno a stav iného používateľa (zo zoznamu kanálov alebo z websocketu)
+export function setUser(nick, { name, status }) {
+  const user = state.users[nick] ?? { name: nick, color: 'lav' }
+
+  state.users[nick] = { ...user, name: name ?? user.name, status }
 }
 
 export function findChannel(name) {

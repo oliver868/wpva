@@ -8,6 +8,7 @@ export type ScannedRoutes = {
     'auth.sessions.csrf': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
     'profile.profile.show': { paramsTuple?: []; params?: {} }
+    'profile.profile.update_status': { paramsTuple?: []; params?: {} }
     'profile.sessions.destroy': { paramsTuple?: []; params?: {} }
     'servers.store': { paramsTuple?: []; params?: {} }
     'channels.channels.index': { paramsTuple?: []; params?: {} }
@@ -41,6 +42,7 @@ export type ScannedRoutes = {
   POST: {
     'auth.new_account.store': { paramsTuple?: []; params?: {} }
     'auth.sessions.store': { paramsTuple?: []; params?: {} }
+    'profile.profile.update_status': { paramsTuple?: []; params?: {} }
     'profile.sessions.destroy': { paramsTuple?: []; params?: {} }
     'servers.store': { paramsTuple?: []; params?: {} }
     'channels.channels.store': { paramsTuple?: []; params?: {} }

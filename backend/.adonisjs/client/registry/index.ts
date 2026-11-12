@@ -32,6 +32,12 @@ const routes = {
     tokens: [[0,"api"],[0,"v1"],[0,"account"],[0,"profile"]],
     types: placeholder as Registry['profile.profile.show']['types'],
   },
+  'profile.profile.update_status': {
+    methods: ["POST"],
+    pattern: '/api/v1/account/status',
+    tokens: [[0,"api"],[0,"v1"],[0,"account"],[0,"status"]],
+    types: placeholder as Registry['profile.profile.update_status']['types'],
+  },
   'profile.sessions.destroy': {
     methods: ["POST"],
     pattern: '/api/v1/account/logout',

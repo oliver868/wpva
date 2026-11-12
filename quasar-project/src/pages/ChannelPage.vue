@@ -181,11 +181,21 @@
           composerFocused = $event.currentTarget.contains($event.relatedTarget)
         "
       >
-        <div v-if="channel.typing">
-          <button class="chip" @click="showTyping = !showTyping">
-            {{ channel.typing.nick }} píše…
+        <!-- kto práve píše; po kliknutí na nick vidno rozpísaný text -->
+        <div v-if="Object.keys(typers).length" class="typing-bar" role="status">
+          <button
+            v-for="(text, nick) in typers"
+            :key="nick"
+            type="button"
+            class="chip"
+            :aria-pressed="shownTyper === nick"
+            @click="shownTyper = shownTyper === nick ? '' : nick"
+          >
+            @{{ nick }} píše…
           </button>
-          <p v-if="showTyping" class="typing-text">{{ channel.typing.text }}</p>
+          <p v-if="typers[shownTyper]" class="typing-text">
+            <b>@{{ shownTyper }}:</b> {{ typers[shownTyper] }}
+          </p>
         </div>
 
         <section
@@ -250,6 +260,7 @@ import {
 import MessageList from '@/components/MessageList.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import StatusBanner from '@/components/StatusBanner.vue'
+import { realtimeSocket, joinTyping } from '@/stores/realtime.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -262,7 +273,6 @@ const channelMembers = computed(() => channel.value?.members ?? [])
 const input = ref('')
 // na mobile (do 700 px) sú členovia predvolene skrytí, otvoria sa tlačidlom
 const showMembers = ref($q.screen.width > 700)
-const showTyping = ref(false)
 const composerInput = ref(null)
 const composerFocused = ref(false)
 const commandsDismissed = ref(false)
@@ -352,6 +362,56 @@ watch(
   }
 )
 
+// --- kto práve píše (websocket kanál channels/:id) ---
+const typers = ref({}) // nick → rozpísaný text
+const shownTyper = ref('')
+const typingTimers = new Map()
+let typing = null
+
+const isMember = computed(
+  () => channel.value?.members.includes(state.me) && !hasChannelInvitation(channel.value)
+)
+
+function updateTyper({ nick, text }) {
+  clearTimeout(typingTimers.get(nick))
+
+  if (!text) {
+    delete typers.value[nick]
+    return
+  }
+
+  typers.value[nick] = text
+  // kto dlho nič nenapísal alebo zavrel aplikáciu, už nepíše
+  typingTimers.set(nick, setTimeout(() => delete typers.value[nick], 15000))
+}
+
+watch(
+  [() => isMember.value && channel.value.id, realtimeSocket],
+  ([id, socket], _, onCleanup) => {
+    typers.value = {}
+    shownTyper.value = ''
+
+    if (!id || !socket) {
+      return
+    }
+
+    typing = joinTyping(id, updateTyper)
+
+    onCleanup(() => {
+      typing.stop()
+      typing = null
+      typingTimers.forEach(timer => clearTimeout(timer))
+      typingTimers.clear()
+    })
+  },
+  { immediate: true }
+)
+
+// každá zmena textu sa pošle ostatným (príkazy nie)
+watch(input, text => {
+  typing?.send(text.startsWith('/') ? '' : text)
+})
+
 function completeCommand(command) {
   input.value = command.name
   if (command.arguments) {
@@ -435,6 +495,19 @@ async function decline() {
 }
 .channel-composer {
   position: relative;
+}
+.typing-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.typing-bar .chip {
+  cursor: pointer;
+}
+.typing-bar .typing-text {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
 }
 .command-suggestions {
   position: absolute;

@@ -14,6 +14,7 @@ export interface ApiDefinition {
   profile: {
     profile: {
       show: typeof routes['profile.profile.show']
+      updateStatus: typeof routes['profile.profile.update_status']
     }
     sessions: {
       destroy: typeof routes['profile.sessions.destroy']

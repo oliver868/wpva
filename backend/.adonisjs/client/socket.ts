@@ -18,6 +18,24 @@ export interface AppSocket {
 
     }
 
+    readonly 'channels/:id': {
+
+      readonly params: {
+
+        readonly 'id': string | number
+
+      }
+
+      readonly channel: typeof import('#channels/chat_channel').default
+
+      readonly handlers: {
+
+        readonly 'typing': 'typing'
+
+      }
+
+    }
+
   }
 
 }
