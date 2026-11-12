@@ -233,14 +233,13 @@
 </template>
 
 <script setup>
-import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import {
   state,
   findChannel,
   loadOlderMessages,
-  loadNewMessages,
   sendChannelMessage,
   runCommand,
   channelInvitation,
@@ -352,17 +351,6 @@ watch(
     commandsDismissed.value = false
   }
 )
-
-// nové správy od ostatných sa načítavajú každé 3 s (kým nie sú websockety)
-let messageTimer = null
-function pollMessages() {
-  const current = channel.value
-  if (current && current.members.includes(state.me)) loadNewMessages(current)
-}
-onMounted(() => {
-  messageTimer = window.setInterval(pollMessages, 3000)
-})
-onBeforeUnmount(() => window.clearInterval(messageTimer))
 
 function completeCommand(command) {
   input.value = command.name

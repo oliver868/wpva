@@ -15,26 +15,27 @@ export const state = reactive({
 let requestVersion = 0
 let channelSession = 0
 
-// správy kanála podľa id; prežijú obnovenie zoznamu kanálov (refreshChannels)
 const histories = new Map()
+
 function historyOf(channelId) {
   if (!histories.has(channelId)) {
     histories.set(channelId, reactive({
       messages: [],
       hasOlder: true,
       loading: false,
-      loadingNew: false,
-      initialized: false,
-      newestFetchedId: 0
+      initialized: false
     }))
   }
+
   return histories.get(channelId)
 }
 
 export function resetChannels() {
   requestVersion++
   channelSession++
+
   histories.clear()
+
   state.channels = []
   state.servers = []
   state.channelsLoading = false
@@ -44,34 +45,57 @@ export function resetChannels() {
 
 export async function refreshChannels() {
   const version = ++requestVersion
+
   state.channelsLoading = true
+
   try {
     const { status, body } = await request('channels')
-    if (status !== 200) throw new Error(serverError)
-    if (version !== requestVersion) return false
+
+    if (status !== 200) {
+      throw new Error(serverError)
+    }
+
+    if (version !== requestVersion) {
+      return false
+    }
 
     const previousChannels = new Map(state.channels.map(channel => [channel.id, channel]))
+
     state.servers = body.servers ?? []
     state.channels = body.data.map(channel => {
       const previous = previousChannels.get(channel.id)
+      const invitations = []
+
+      if (channel.invitedBy) {
+        invitations.push({ nick: state.me, from: channel.invitedBy })
+      }
+
       return {
         ...channel,
-        invitations: channel.invitedBy ? [{ nick: state.me, from: channel.invitedBy }] : [],
+        invitations,
         banned: [],
         messages: historyOf(channel.id).messages,
         notify: previous?.notify ?? 'all'
       }
     })
+
     if (!visibleServers().some(server => server.name === state.activeServer)) {
       state.activeServer = visibleServers()[0]?.name ?? channelGroup
     }
+
     state.channelsError = ''
+
     return true
   } catch {
-    if (version === requestVersion) state.channelsError = 'Kanály sa nepodarilo načítať.'
+    if (version === requestVersion) {
+      state.channelsError = 'Kanály sa nepodarilo načítať.'
+    }
+
     return false
   } finally {
-    if (version === requestVersion) state.channelsLoading = false
+    if (version === requestVersion) {
+      state.channelsLoading = false
+    }
   }
 }
 
@@ -80,36 +104,51 @@ export function findChannel(name) {
 }
 
 export function findServerForChannel(channel) {
-  return channel ? { id: channel.serverId ?? null, name: channel.serverName ?? channelGroup } : undefined
+  if (!channel) {
+    return undefined
+  }
+
+  return { id: channel.serverId ?? null, name: channel.serverName ?? channelGroup }
 }
 
 export function visibleChannels(serverName) {
-  return serverName === undefined
-    ? state.channels
-    : state.channels.filter(channel => findServerForChannel(channel).name === serverName)
+  if (serverName === undefined) {
+    return state.channels
+  }
+
+  return state.channels.filter(channel => findServerForChannel(channel).name === serverName)
 }
 
 export function visibleServers() {
   const groups = new Map(state.servers.map(server => [
     server.name, { ...server, channels: [], hasInvitation: false }
   ]))
+
   for (const channel of visibleChannels()) {
     const { name } = findServerForChannel(channel)
+
     if (!groups.has(name)) {
       groups.set(name, { id: null, name, canCreate: true, channels: [], hasInvitation: false })
     }
+
     const group = groups.get(name)
+
     group.channels.push(channel.name)
     group.hasInvitation ||= hasChannelInvitation(channel)
   }
+
   return [...groups.values()]
 }
 
 export function lastMessage(friend) {
   for (let index = friend.threads.length - 1; index >= 0; index -= 1) {
     const messages = friend.threads[index].messages
-    if (messages.length) return messages[messages.length - 1].text
+
+    if (messages.length) {
+      return messages[messages.length - 1].text
+    }
   }
+
   return 'Zatiaľ bez správ'
 }
 
@@ -127,18 +166,34 @@ export function mentionsUser(text, nick = state.me) {
 
 async function changeChannel(path, payload, successMessage, goTo) {
   const session = channelSession
+
   try {
     const { status, body } = await post(path, payload)
-    if (session !== channelSession) return { success: false }
+
+    if (session !== channelSession) {
+      return { success: false }
+    }
+
     if ([200, 201, 204].includes(status)) {
       await refreshChannels()
-      if (session !== channelSession) return { success: false }
-      // správa môže závisieť od odpovede (napr. /join: vytvorený = 201, pripojený = 200)
-      const message =
-        typeof successMessage === 'function' ? successMessage(status, body) : successMessage
+
+      if (session !== channelSession) {
+        return { success: false }
+      }
+
+      let message = successMessage
+
+      if (typeof successMessage === 'function') {
+        message = successMessage(status, body)
+      }
+
       return { success: true, message, goTo, data: body?.data }
     }
-    if (status === 404) await refreshChannels()
+
+    if (status === 404) {
+      await refreshChannels()
+    }
+
     return { success: false, message: body?.message ?? serverError }
   } catch {
     return { success: false, message: serverError }
@@ -147,22 +202,39 @@ async function changeChannel(path, payload, successMessage, goTo) {
 
 export function createChannel(name, isPrivate, serverId) {
   const normalized = name.trim().toLowerCase()
-  return changeChannel('channels', { name: normalized, private: isPrivate, serverId },
-    `Kanál #${normalized} je vytvorený.`, '/c/' + normalized)
+
+  return changeChannel(
+    'channels',
+    { name: normalized, private: isPrivate, serverId },
+    `Kanál #${normalized} je vytvorený.`,
+    '/c/' + normalized
+  )
 }
 
 export async function createServer(name) {
   const result = await changeChannel('servers', { name: name.trim() }, 'Server je vytvorený.', '/home')
-  if (result.success) state.activeServer = result.data.name
+
+  if (result.success) {
+    state.activeServer = result.data.name
+  }
+
   return result
 }
 
 export function exitChannel(channel, destroy) {
-  const action = destroy ? 'delete' : 'leave'
+  let action = 'leave'
+
+  if (destroy) {
+    action = 'delete'
+  }
+
   const deletesChannel = destroy || channel.admin === state.me
-  const message = deletesChannel
-    ? `Kanál #${channel.name} je zrušený.`
-    : `Opustil si #${channel.name}.`
+  let message = `Opustil si #${channel.name}.`
+
+  if (deletesChannel) {
+    message = `Kanál #${channel.name} je zrušený.`
+  }
+
   return changeChannel(`channels/${channel.id}/${action}`, {}, message, '/home')
 }
 
@@ -171,94 +243,114 @@ export function setChannelVisibility(channel, isPrivate) {
 }
 
 export function acceptChannelInvitation(channel) {
-  return changeChannel(`channels/${channel.id}/invitation`, { accept: true },
-    `Prijal si pozvánku do #${channel.name}.`)
+  return changeChannel(
+    `channels/${channel.id}/invitation`,
+    { accept: true },
+    `Prijal si pozvánku do #${channel.name}.`
+  )
 }
 
 export function declineChannelInvitation(channel) {
-  return changeChannel(`channels/${channel.id}/invitation`, { accept: false },
-    `Odmietol si pozvánku do #${channel.name}.`)
+  return changeChannel(
+    `channels/${channel.id}/invitation`,
+    { accept: false },
+    `Odmietol si pozvánku do #${channel.name}.`
+  )
 }
 
-// čas správy vo formáte 14:05
 function formatTime(date) {
   return date.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
 }
 
 function toMessage(message) {
   const time = formatTime(new Date(message.createdAt))
+
   return { id: message.id, from: message.from, text: message.text, time }
 }
 
-// pridá správy zo servera, každú iba raz (odoslaná správa môže prísť aj pri obnovení)
 function appendMessages(history, messages) {
   const known = new Set(history.messages.map(message => message.id))
+
   for (const message of messages) {
     if (!known.has(message.id)) {
       history.messages.push(toMessage(message))
       known.add(message.id)
     }
   }
+
   history.messages.sort((a, b) => a.id - b.id)
 }
 
-// staršie správy pre infinite scroll; vráti, či na serveri ešte nejaké sú
 export async function loadOlderMessages(channel) {
   const history = historyOf(channel.id)
-  if (!history.hasOlder || history.loading) return history.hasOlder
+
+  if (!history.hasOlder || history.loading) {
+    return history.hasOlder
+  }
+
   history.loading = true
+
   try {
-    const oldest = history.initialized ? history.messages[0]?.id : undefined
-    const { status, body } = await request(
-      `channels/${channel.id}/messages` + (oldest ? `?before=${oldest}` : '')
-    )
-    if (histories.get(channel.id) !== history) return false
-    if (status !== 200) throw new Error('História správ nie je dostupná.')
+    let oldest
+
+    if (history.initialized) {
+      oldest = history.messages[0]?.id
+    }
+
+    let path = `channels/${channel.id}/messages`
+
+    if (oldest) {
+      path += `?before=${oldest}`
+    }
+
+    const { status, body } = await request(path)
+
+    if (histories.get(channel.id) !== history) {
+      return false
+    }
+
+    if (status !== 200) {
+      throw new Error('História správ nie je dostupná.')
+    }
+
     appendMessages(history, body.data)
+
     if (!history.initialized) {
-      history.newestFetchedId = body.data.at(-1)?.id ?? 0
       history.initialized = true
     }
+
     history.hasOlder = body.hasMore
+
     return history.hasOlder
   } finally {
     history.loading = false
   }
 }
 
-// nové správy od ostatných (volá sa pravidelne, kým je kanál otvorený)
-export async function loadNewMessages(channel) {
-  const history = historyOf(channel.id)
-  // kým sa nenačíta prvá strana, nové správy nemajú na čo nadviazať
-  if (!history.initialized || history.loadingNew) return
-  history.loadingNew = true
-  try {
-    // Kurzor posúva iba načítanie zoznamu, nikdy samotné odoslanie správy.
-    const { status, body } = await request(
-      `channels/${channel.id}/messages?after=${history.newestFetchedId}`
-    )
-    if (status === 200 && histories.get(channel.id) === history) {
-      appendMessages(history, body.data)
-      history.newestFetchedId = body.data.at(-1)?.id ?? history.newestFetchedId
-    }
-  } catch {
-    // skúsi sa znova pri ďalšom obnovení
-  } finally {
-    history.loadingNew = false
-  }
+export function receiveMessages(channelId, messages) {
+  appendMessages(historyOf(channelId), messages)
 }
 
 export async function sendChannelMessage(channel, text) {
   const history = historyOf(channel.id)
+
   try {
     const { status, body } = await post(`channels/${channel.id}/messages`, { text })
-    if (status !== 201) return { success: false, message: body?.message ?? serverError }
-    if (histories.get(channel.id) !== history) return { success: false }
-    if (history.initialized) appendMessages(history, [body.data])
-    else {
-      // Správa už je uložená. Chyba načítania nesmie spôsobiť jej opakované odoslanie.
+
+    if (status !== 201) {
+      return { success: false, message: body?.message ?? serverError }
+    }
+
+    if (histories.get(channel.id) !== history) {
+      return { success: false }
+    }
+
+    if (history.initialized) {
+      appendMessages(history, [body.data])
+    } else {
       await loadOlderMessages(channel).catch(() => {})
     }
+
     return { success: true }
   } catch {
     return { success: false, message: serverError }
@@ -271,61 +363,103 @@ export function addMessage(messages, text) {
 
 export function joinChannel(name, isPrivate) {
   const server = visibleServers().find(item => item.name === state.activeServer)
-  return changeChannel('channels/join', { name, private: isPrivate, serverId: server?.id },
-    status => status === 201 ? `Kanál #${name} je vytvorený.` : `Si v #${name}.`, '/c/' + name)
+
+  function successMessage(status) {
+    if (status === 201) {
+      return `Kanál #${name} je vytvorený.`
+    }
+
+    return `Si v #${name}.`
+  }
+
+  return changeChannel(
+    'channels/join',
+    { name, private: isPrivate, serverId: server?.id },
+    successMessage,
+    '/c/' + name
+  )
 }
 
 export function inviteToChannel(channel, nick) {
-  return changeChannel(`channels/${channel.id}/invite`, { nick },
-    `Pozvánka pre @${nick} do #${channel.name} bola odoslaná.`)
+  return changeChannel(
+    `channels/${channel.id}/invite`,
+    { nick },
+    `Pozvánka pre @${nick} do #${channel.name} bola odoslaná.`
+  )
 }
 
 export function revokeFromChannel(channel, nick) {
-  return changeChannel(`channels/${channel.id}/revoke`, { nick },
-    `@${nick} už nemá prístup do #${channel.name}.`)
+  return changeChannel(
+    `channels/${channel.id}/revoke`,
+    { nick },
+    `@${nick} už nemá prístup do #${channel.name}.`
+  )
 }
 
-// hlášku (počet hlasov alebo ban) posiela server
 export function kickFromChannel(channel, nick) {
   return changeChannel(`channels/${channel.id}/kick`, { nick }, (_, body) => body?.message)
 }
 
-// malé písmená, čísla a pomlčky medzi nimi (napr. vpwa-tim)
 const channelNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export async function runCommand(text, channel) {
   const [command, argument, option, ...rest] = text.trim().split(/\s+/)
 
   if (command === '/list') {
-    if (argument) return { message: 'Použi /list bez ďalších argumentov.' }
-    if (!channel) return { message: 'Príkaz /list použi v kanáli.' }
+    if (argument) {
+      return { message: 'Použi /list bez ďalších argumentov.' }
+    }
+
+    if (!channel) {
+      return { message: 'Príkaz /list použi v kanáli.' }
+    }
+
     if (!(await refreshChannels())) {
       return { message: 'Členov sa nepodarilo načítať. Skús to znova.' }
     }
+
     const current = state.channels.find(item => item.id === channel.id)
+
     if (!current?.members.includes(state.me) || hasChannelInvitation(current)) {
       return { message: 'Členov môžeš zobraziť iba v kanáli, ktorého si členom.' }
     }
+
     return { showMembers: true }
   }
 
   if (command === '/join') {
     const name = argument?.replace(/^#/, '').toLowerCase()
+
     if (!name || rest.length || (option && option !== 'private')) {
       return { message: 'Použi /join nazov-kanala [private].' }
     }
+
     if (name.length > 60 || !channelNamePattern.test(name)) {
       return { message: 'Názov kanála môže mať najviac 60 znakov: malé písmená, čísla a pomlčky.' }
     }
+
     return joinChannel(name, option === 'private')
   }
 
   if (command === '/invite' || command === '/revoke' || command === '/kick') {
     const nick = argument?.replace(/^@/, '').toLowerCase()
-    if (!nick || option) return { message: `Použi ${command} nick.` }
-    if (!channel) return { message: `Príkaz ${command} použi v kanáli.` }
-    if (command === '/invite') return inviteToChannel(channel, nick)
-    if (command === '/revoke') return revokeFromChannel(channel, nick)
+
+    if (!nick || option) {
+      return { message: `Použi ${command} nick.` }
+    }
+
+    if (!channel) {
+      return { message: `Príkaz ${command} použi v kanáli.` }
+    }
+
+    if (command === '/invite') {
+      return inviteToChannel(channel, nick)
+    }
+
+    if (command === '/revoke') {
+      return revokeFromChannel(channel, nick)
+    }
+
     return kickFromChannel(channel, nick)
   }
 

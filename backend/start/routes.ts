@@ -38,7 +38,9 @@ router
       .as('profile')
       .use(middleware.auth())
 
-    router.post('servers', [ServersController, 'store']).use(middleware.auth())
+    router
+      .post('servers', [ServersController, 'store'])
+      .use([middleware.auth(), middleware.realtime()])
 
     router
       .group(() => {
@@ -59,6 +61,6 @@ router
       .where('id', router.matchers.number())
       .prefix('channels')
       .as('channels')
-      .use(middleware.auth())
+      .use([middleware.auth(), middleware.realtime()])
   })
   .prefix('/api/v1')

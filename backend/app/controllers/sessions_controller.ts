@@ -2,6 +2,7 @@ import User from '#models/user'
 import { loginValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
 import UserTransformer from '#transformers/user_transformer'
+import { disconnectSession } from '#services/realtime'
 
 export default class SessionsController {
   csrf({ request, response }: HttpContext) {
@@ -17,8 +18,9 @@ export default class SessionsController {
     return serialize(UserTransformer.transform(user))
   }
 
-  async destroy({ auth, response }: HttpContext) {
+  async destroy({ auth, response, session }: HttpContext) {
     await auth.use('web').logout()
+    disconnectSession(session.sessionId)
     return response.noContent()
   }
 }

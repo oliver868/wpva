@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@quasar/extras": "^2.1.0",
+    "@rlanz/socket": "0.2.4",
     "quasar": "^2.32.3",
     "vue": "^3.5.22",
     "vue-router": "^5.0.6"
@@ -37,7 +38,7 @@
     "sass-embedded": "^1.105.1"
   },
   "engines": {
-    "node": ">= 26 || ^24 || ^22.12"
+    "node": ">= 26 || ^24"
   },
   "productName": "Kanále"
 }

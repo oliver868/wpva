@@ -682,7 +682,6 @@ import {
   hasChannelInvitation,
   visibleChannels,
   visibleServers,
-  refreshChannels,
   resetChannels,
   exitChannel,
   createChannel,
@@ -691,7 +690,7 @@ import {
 } from "@/stores/chat.js";
 import UserAvatar from "@/components/UserAvatar.vue";
 import { signedIn, useSignOut } from "@/stores/auth.js";
-import { startMessageNotifications } from "@/stores/notifications.js";
+import { startRealtime } from "@/stores/realtime.js";
 
 const route = useRoute();
 const router = useRouter();
@@ -834,15 +833,7 @@ const tabs = computed(() => visibleChannels(state.activeServer));
 watch(signedIn, (active, _, onCleanup) => {
   resetChannels();
   if (!active) return;
-  refreshChannels();
-  const stopNotifications = startMessageNotifications($q, path => router.push(path));
-  const timer = window.setInterval(() => {
-    if (!state.channelsLoading) refreshChannels();
-  }, 1000);
-  onCleanup(() => {
-    window.clearInterval(timer);
-    stopNotifications();
-  });
+  onCleanup(startRealtime($q, path => router.push(path)));
 }, { immediate: true });
 
 // záložky, ktoré sa nezmestili do riadku (sú mimo viditeľnej časti)

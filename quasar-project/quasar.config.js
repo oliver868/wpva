@@ -63,7 +63,8 @@ export default defineConfig((/* ctx */) => {
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
       proxy: {
-        '/api': 'http://localhost:3333'
+        '/api': 'http://localhost:3333',
+        '/socket': { target: 'http://localhost:3333', ws: true }
       },
       // vueDevtools: true,
       // https: true,
