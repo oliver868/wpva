@@ -2,7 +2,7 @@
   "name": "quasar",
   "version": "0.0.1",
   "private": true,
-  "description": "A Quasar Project",
+  "description": "Chat v štýle IRC/Slack",
   "keywords": [
     "quasar",
     "quasar-app",
@@ -19,7 +19,9 @@
     "lint:check": "oxfmt --check && oxlint",
     "test": "node --test",
     "dev": "quasar dev",
+    "dev:pwa": "quasar dev -m pwa",
     "build": "quasar build",
+    "build:pwa": "quasar build -m pwa",
     "postinstall": "quasar prepare --silent"
   },
   "dependencies": {
